@@ -24,6 +24,7 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
   const [syncing, setSyncing] = useState(false)
+  const [showAllExpenses, setShowAllExpenses] = useState(false)
 
   const fetchExpenses = async () => {
     try {
@@ -71,18 +72,21 @@ export default function Home() {
 
   const handleSubmit = async (data: any) => {
     try {
-      if (editingExpense) {
-        await fetch(`/api/expenses/${editingExpense.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        })
-      } else {
-        await fetch('/api/expenses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...data, source: 'manual' }),
-        })
+      const response = editingExpense
+        ? await fetch(`/api/expenses/${editingExpense.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          })
+        : await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, source: 'manual' }),
+          })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save expense')
       }
 
       setShowForm(false)
@@ -91,6 +95,7 @@ export default function Home() {
       await fetchStats()
     } catch (error) {
       console.error('Error saving expense:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save expense. Please try again.')
     }
   }
 
@@ -182,18 +187,17 @@ export default function Home() {
       <div className="px-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Recent Expenses</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEditingExpense(undefined)
-              setShowForm(true)
-            }}
-            className="gap-2"
-          >
-            <Calendar className="w-4 h-4" />
-            View All
-          </Button>
+          {expenses.length > 10 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAllExpenses(!showAllExpenses)}
+              className="gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+              {showAllExpenses ? 'Show Less' : 'View All'}
+            </Button>
+          )}
         </div>
 
         {loading ? (
@@ -218,7 +222,7 @@ export default function Home() {
         ) : (
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
-              {expenses.slice(0, 10).map((expense) => (
+              {(showAllExpenses ? expenses : expenses.slice(0, 10)).map((expense) => (
                 <ExpenseCard
                   key={expense.id}
                   expense={expense}
