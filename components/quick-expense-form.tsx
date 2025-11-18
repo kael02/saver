@@ -38,11 +38,6 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
   const [date, setDate] = useState<Date>(
     expense?.transaction_date ? new Date(expense.transaction_date) : new Date()
   )
-  const [time, setTime] = useState(
-    expense?.transaction_date
-      ? format(new Date(expense.transaction_date), 'HH:mm')
-      : format(new Date(), 'HH:mm')
-  )
   const [formData, setFormData] = useState({
     amount: expense?.amount?.toString() || '',
     merchant: expense?.merchant || '',
@@ -55,17 +50,24 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
     setLoading(true)
 
     try {
-      // Combine date and time
-      const [hours, minutes] = time.split(':')
-      const combinedDate = new Date(date)
-      combinedDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+      // Use the selected date with current time or keep original time if editing
+      const submitDate = new Date(date)
+      if (expense?.transaction_date) {
+        // Keep the original time when editing
+        const originalDate = new Date(expense.transaction_date)
+        submitDate.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0)
+      } else {
+        // Use current time for new expenses
+        const now = new Date()
+        submitDate.setHours(now.getHours(), now.getMinutes(), 0, 0)
+      }
 
       await onSubmit({
         amount: parseFloat(formData.amount),
         merchant: formData.merchant,
         category: formData.category || 'Other',
         notes: formData.notes,
-        transactionDate: combinedDate.toISOString(),
+        transactionDate: submitDate.toISOString(),
         // Backend will fill these from email or use defaults
         cardNumber: expense?.card_number || 'N/A',
         cardholder: expense?.cardholder || 'Manual',
@@ -168,42 +170,33 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
             </div>
           </div>
 
-          {/* Date & Time */}
+          {/* Date */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">
-              Date & Time
+              Date
             </Label>
-            <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "flex-1 h-12 justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => newDate && setDate(newDate)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="h-12 w-32"
-                required
-              />
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full h-12 justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Notes */}
