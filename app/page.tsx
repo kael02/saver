@@ -1,19 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ExpenseCard } from '@/components/expense-card'
 import { StatsCard } from '@/components/stats-card'
-import { EmailSyncButton } from '@/components/email-sync-button'
-import { ExpenseForm } from '@/components/expense-form'
+import { QuickExpenseForm } from '@/components/quick-expense-form'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import {
   Wallet,
-  TrendingUp,
-  CreditCard,
+  TrendingDown,
+  Calendar,
   Plus,
-  X,
+  RefreshCw,
+  Mail,
 } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
@@ -23,6 +23,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
+  const [syncing, setSyncing] = useState(false)
 
   const fetchExpenses = async () => {
     try {
@@ -52,7 +53,7 @@ export default function Home() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return
+    if (!confirm('Delete this expense?')) return
 
     try {
       await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
@@ -94,121 +95,130 @@ export default function Home() {
   }
 
   const handleSync = async () => {
-    await fetchExpenses()
-    await fetchStats()
+    setSyncing(true)
+    try {
+      await fetch('/api/email/sync', { method: 'POST' })
+      await fetchExpenses()
+      await fetchStats()
+    } catch (error) {
+      console.error('Error syncing:', error)
+    } finally {
+      setSyncing(false)
+    }
   }
 
+  const todayExpenses = expenses.filter((e) => {
+    const today = new Date().toDateString()
+    const expenseDate = new Date(e.transaction_date).toDateString()
+    return today === expenseDate
+  })
+
+  const todayTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0)
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
-                Expense Tracker
-              </h1>
-              <p className="text-muted-foreground">
-                Manage your daily expenses with automatic email integration
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <EmailSyncButton onSync={handleSync} />
-              <Button
-                onClick={() => {
-                  setEditingExpense(undefined)
-                  setShowForm(!showForm)
-                }}
-                variant={showForm ? 'outline' : 'default'}
-              >
-                {showForm ? (
-                  <>
-                    <X className="w-4 h-4 mr-2" />
-                    Cancel
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Expense
-                  </>
-                )}
-              </Button>
-            </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-6 pb-8 rounded-b-3xl shadow-lg">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">My Expenses</h1>
+            <p className="text-blue-100 text-sm">Track your daily spending</p>
           </div>
-
-          {/* Stats Cards */}
-          {!loading && stats && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <StatsCard
-                title="Total Expenses"
-                value={formatCurrency(stats.total, 'VND')}
-                icon={Wallet}
-                description={`${stats.count} transactions`}
-                index={0}
-              />
-              <StatsCard
-                title="Top Merchant"
-                value={stats.topMerchants?.[0]?.merchant || 'N/A'}
-                icon={CreditCard}
-                description={
-                  stats.topMerchants?.[0]
-                    ? formatCurrency(stats.topMerchants[0].amount, 'VND')
-                    : 'No data'
-                }
-                index={1}
-              />
-              <StatsCard
-                title="Categories"
-                value={Object.keys(stats.byCategory || {}).length}
-                icon={TrendingUp}
-                description="Active categories"
-                index={2}
-              />
-            </div>
-          )}
-
-          {/* Form */}
-          {showForm && (
-            <div className="mb-8">
-              <ExpenseForm
-                expense={editingExpense}
-                onSubmit={handleSubmit}
-                onCancel={() => {
-                  setShowForm(false)
-                  setEditingExpense(undefined)
-                }}
-              />
-            </div>
-          )}
-        </motion.div>
-
-        {/* Expenses List */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Recent Expenses</h2>
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Loading expenses...</p>
-            </div>
-          ) : expenses.length === 0 ? (
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handleSync}
+            disabled={syncing}
+            className="rounded-full h-12 w-12"
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border-2 border-dashed"
+              animate={{ rotate: syncing ? 360 : 0 }}
+              transition={{ duration: 1, repeat: syncing ? Infinity : 0, ease: 'linear' }}
             >
-              <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Add your first expense or sync from emails
-              </p>
+              <Mail className="h-5 w-5" />
             </motion.div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {expenses.map((expense) => (
+          </Button>
+        </div>
+
+        {/* Today's Total */}
+        <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-6">
+          <p className="text-blue-100 text-sm mb-2">Today's Spending</p>
+          <p className="text-4xl font-bold">
+            {formatCurrency(todayTotal, 'VND')}
+          </p>
+          <p className="text-blue-100 text-sm mt-2">
+            {todayExpenses.length} {todayExpenses.length === 1 ? 'expense' : 'expenses'}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {!loading && stats && (
+        <div className="px-4 -mt-6 mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            <StatsCard
+              title="Total"
+              value={formatCurrency(stats.total, 'VND')}
+              icon={Wallet}
+              description={`${stats.count} total`}
+              index={0}
+            />
+            <StatsCard
+              title="Top Merchant"
+              value={stats.topMerchants?.[0]?.merchant?.slice(0, 15) || 'N/A'}
+              icon={TrendingDown}
+              description={
+                stats.topMerchants?.[0]
+                  ? formatCurrency(stats.topMerchants[0].amount, 'VND')
+                  : 'No data'
+              }
+              index={1}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Expenses List */}
+      <div className="px-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Recent Expenses</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEditingExpense(undefined)
+              setShowForm(true)
+            }}
+            className="gap-2"
+          >
+            <Calendar className="w-4 h-4" />
+            View All
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+            <p className="mt-4 text-muted-foreground text-sm">Loading...</p>
+          </div>
+        ) : expenses.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16 px-4"
+          >
+            <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+              <Wallet className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              Add your first expense or sync from emails
+            </p>
+          </motion.div>
+        ) : (
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {expenses.slice(0, 10).map((expense) => (
                 <ExpenseCard
                   key={expense.id}
                   expense={expense}
@@ -216,10 +226,43 @@ export default function Home() {
                   onEdit={handleEdit}
                 />
               ))}
-            </div>
-          )}
-        </div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
+
+      {/* Floating Add Button */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.5, type: 'spring' }}
+        className="fixed bottom-6 right-6 z-40"
+      >
+        <Button
+          size="lg"
+          onClick={() => {
+            setEditingExpense(undefined)
+            setShowForm(true)
+          }}
+          className="h-16 w-16 rounded-full shadow-2xl hover:shadow-xl transition-shadow"
+        >
+          <Plus className="h-7 w-7" />
+        </Button>
+      </motion.div>
+
+      {/* Expense Form Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <QuickExpenseForm
+            expense={editingExpense}
+            onSubmit={handleSubmit}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingExpense(undefined)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

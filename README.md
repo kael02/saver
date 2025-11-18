@@ -1,6 +1,6 @@
-# 💰 Expense Tracker - Automatic Email Integration
+# 💰 Expense Tracker - Mobile-First Daily Expense Manager
 
-A modern, beautiful expense management application built with Next.js that automatically reads transaction notification emails and adds expenses to your tracker. Perfect for tracking daily expenses from bank transaction notifications.
+A beautiful, mobile-first expense tracking app built with Next.js that automatically reads transaction emails and helps you track daily spending. Designed for quick, personal expense logging on the go.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
@@ -9,14 +9,37 @@ A modern, beautiful expense management application built with Next.js that autom
 
 ## ✨ Features
 
-- **📧 Automatic Email Parsing**: Reads transaction notification emails (VIB Bank format supported)
-- **💰 Expense Management**: Create, read, update, and delete expenses
-- **📊 Dashboard Analytics**: View total expenses, top merchants, and category breakdowns
-- **🎨 Beautiful UI**: Built with shadcn/ui components and Tailwind CSS
-- **✨ Smooth Animations**: Powered by Framer Motion
-- **🔄 Real-time Sync**: Manual email sync with one click
-- **📱 Responsive Design**: Works perfectly on desktop and mobile
-- **🌙 Dark Mode Ready**: Beautiful in both light and dark themes
+- **📱 Mobile-First Design**: Optimized for one-handed use on smartphones
+- **⚡ Quick Add**: Add expenses in seconds with large touch targets
+- **📧 Auto-Import**: Automatically reads bank transaction emails (VIB supported)
+- **🎨 Beautiful UI**: Smooth animations with Framer Motion and shadcn/ui
+- **📊 Today's Summary**: See today's spending at a glance
+- **🏷️ Category Pills**: Quick categorization with emoji icons
+- **🔄 One-Click Sync**: Sync expenses from email with a tap
+- **💾 Offline-Ready**: Works smoothly even on slow connections
+
+## 🎯 Perfect For
+
+- Daily personal expense tracking
+- Quick lunch/coffee expense logging
+- Splitting bills with friends
+- Monitoring daily spending habits
+- Budget-conscious individuals
+
+## 📱 Mobile-First Experience
+
+### Quick Add Form
+- **Large amount input** - Easy to type on mobile
+- **Smart category selection** - One-tap category buttons with emojis
+- **Bottom sheet modal** - Natural mobile interaction
+- **Auto-focus** - Start typing immediately
+- **Today as default** - Optimized for logging current expenses
+
+### Expense Cards
+- **Big, tappable buttons** - Easy to edit/delete
+- **Emoji categories** - Visual identification at a glance
+- **Swipe-friendly** - Smooth animations
+- **Compact info** - Just what you need: amount, merchant, date
 
 ## 🏗️ Tech Stack
 
@@ -28,9 +51,9 @@ A modern, beautiful expense management application built with Next.js that autom
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
 - **Email Parsing**: IMAP + Mailparser
 
-## 📧 Supported Email Formats
+## 📧 Email Auto-Import
 
-Currently supports **VIB (Vietnam International Bank)** transaction notifications with the following format:
+Supports **VIB (Vietnam International Bank)** transaction notifications:
 
 ```
 Card number: 5138***5758
@@ -41,62 +64,44 @@ At: 01:03 11/17/2025
 At Shopee
 ```
 
-### Adding More Banks
+Emails are parsed and expenses are created automatically with:
+- Amount and currency
+- Merchant name
+- Transaction date and time
+- Card info (stored but not displayed for manual entries)
 
-You can easily add parsers for other banks by editing `lib/email-parser.ts`:
-
-```typescript
-parseEmail(subject: string, body: string): ParsedExpense | null {
-  if (subject.includes('VIB')) return this.parseVIBEmail(subject, body)
-  if (subject.includes('Vietcombank')) return this.parseVietcombankEmail(subject, body)
-  // Add your bank here
-}
-```
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ and npm/yarn/pnpm
-- A Supabase account (free tier works great)
-- Email account with IMAP access (Gmail, Outlook, etc.)
+- Node.js 18+
+- Supabase account (free)
+- Email with IMAP access (Gmail recommended)
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd saver
-   ```
-
-2. **Install dependencies**
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up Supabase**
+2. **Set up Supabase**
+   - Create project at [supabase.com](https://supabase.com)
+   - Run SQL from `supabase/schema.sql` in SQL Editor
+   - Get your URL and anon key from Settings > API
 
-   a. Create a new project at [supabase.com](https://supabase.com)
-
-   b. Run the SQL schema from `supabase/schema.sql` in the Supabase SQL Editor
-
-   c. Get your project URL and anon key from Settings > API
-
-4. **Configure environment variables**
-
-   Create a `.env` file:
+3. **Configure environment**
    ```bash
    cp .env.example .env
    ```
 
-   Fill in your credentials:
+   Edit `.env`:
    ```env
    # Supabase
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   NEXT_PUBLIC_SUPABASE_URL=your-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-   # Email (for Gmail, enable "App Passwords" in Google Account settings)
+   # Email (Gmail: Enable App Passwords in Google Account)
    EMAIL_USER=your-email@gmail.com
    EMAIL_PASSWORD=your-app-password
    EMAIL_HOST=imap.gmail.com
@@ -104,34 +109,37 @@ parseEmail(subject: string, body: string): ParsedExpense | null {
    EMAIL_TLS=true
    ```
 
-5. **Run the development server**
+4. **Run development server**
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
-
-   Navigate to [http://localhost:3000](http://localhost:3000)
+5. **Open on your phone or browser**
+   - Visit `http://localhost:3000`
+   - Or use your local IP to test on mobile: `http://192.168.x.x:3000`
 
 ## 📱 Usage
 
-### Manual Expense Entry
+### Adding an Expense
 
-1. Click the "Add Expense" button
-2. Fill in the expense details
-3. Click "Create" to save
+1. Tap the **+** button (bottom right)
+2. Enter the **amount** (auto-focused)
+3. Type **what you bought** (e.g., "Coffee")
+4. Tap a **category** pill
+5. Tap **Add Expense**
 
-### Automatic Email Sync
+⚡ Takes less than 5 seconds!
 
-1. Ensure your email credentials are configured in `.env`
-2. Click the "Sync Emails" button in the dashboard
-3. The app will fetch unread transaction emails and automatically create expenses
+### Email Sync
 
-### Managing Expenses
+1. Tap the **mail icon** (top right)
+2. Wait for sync to complete
+3. New expenses appear automatically
 
-- **Edit**: Click the "Edit" button on any expense card
-- **Delete**: Click the "Delete" button (with confirmation)
-- **View Details**: All expense information is displayed on the card
+### Editing/Deleting
+
+- Tap **pencil icon** to edit
+- Tap **trash icon** to delete (with confirmation)
 
 ## 📁 Project Structure
 
@@ -139,114 +147,114 @@ parseEmail(subject: string, body: string): ParsedExpense | null {
 saver/
 ├── app/
 │   ├── api/
-│   │   ├── expenses/        # Expense CRUD endpoints
-│   │   ├── email/           # Email sync endpoints
-│   │   └── stats/           # Dashboard statistics
-│   ├── layout.tsx           # Root layout
-│   ├── page.tsx             # Main dashboard
-│   └── globals.css          # Global styles
+│   │   ├── expenses/        # CRUD endpoints
+│   │   ├── email/           # Email sync
+│   │   └── stats/           # Dashboard stats
+│   ├── page.tsx             # Main mobile-first page
+│   ├── layout.tsx
+│   └── globals.css
 ├── components/
-│   ├── ui/                  # shadcn/ui components
-│   ├── expense-card.tsx     # Expense display card
-│   ├── expense-form.tsx     # Expense input form
-│   ├── stats-card.tsx       # Statistics card
-│   └── email-sync-button.tsx # Email sync button
+│   ├── quick-expense-form.tsx  # Mobile bottom sheet form
+│   ├── expense-card.tsx        # Compact expense display
+│   ├── stats-card.tsx          # Summary cards
+│   └── ui/                     # shadcn/ui components
 ├── lib/
-│   ├── supabase.ts          # Supabase client
-│   ├── email-parser.ts      # Email parsing logic
-│   ├── email-service.ts     # IMAP email service
-│   └── utils.ts             # Utility functions
-├── supabase/
-│   └── schema.sql           # Database schema
-└── package.json
+│   ├── email-parser.ts      # VIB email parsing
+│   ├── email-service.ts     # IMAP service
+│   ├── supabase.ts          # DB client
+│   └── utils.ts             # Helpers
+└── supabase/
+    └── schema.sql           # Database schema
 ```
 
-## 🔧 API Endpoints
+## 🎨 Categories
 
-### Expenses
+Built-in categories with emojis:
+- 🍔 Food
+- 🚗 Transport
+- 🛍️ Shopping
+- 🎬 Entertainment
+- 💡 Bills
+- 🏥 Health
+- 📦 Other
 
-- `GET /api/expenses` - List all expenses (with filters)
-- `GET /api/expenses/:id` - Get single expense
-- `POST /api/expenses` - Create new expense
-- `PUT /api/expenses/:id` - Update expense
-- `DELETE /api/expenses/:id` - Delete expense
+## 📊 Data Model
 
-### Email Sync
+For **manual entries**, you only need:
+- Amount
+- Merchant/Description
+- Category (optional)
+- Date (defaults to now)
+- Notes (optional)
 
-- `POST /api/email/sync` - Trigger email sync
-- `GET /api/email/status` - Get sync status
+For **email imports**, additional fields are stored:
+- Card number
+- Cardholder name
+- Email subject
 
-### Statistics
+*Card info is stored but NOT displayed in the mobile UI*
 
-- `GET /api/stats` - Get dashboard statistics
+## 🔒 Security
 
-## 🎨 Customization
+- ✅ `.env` never committed
+- ✅ Use app-specific passwords
+- ✅ No credential exposure in API responses
+- ✅ Row Level Security ready in Supabase
+- ⚠️ Add authentication before production deployment
 
-### Tailwind Theme
-
-Edit `tailwind.config.ts` to customize colors and styles.
-
-### Components
-
-All UI components are in `components/ui/` and can be customized using the shadcn/ui patterns.
-
-### Email Parser
-
-Add new bank parsers in `lib/email-parser.ts` by creating new parsing methods.
-
-## 🔒 Security Notes
-
-- **Never commit your `.env` file** - it contains sensitive credentials
-- **Use app-specific passwords** for email accounts (especially Gmail)
-- **Enable Row Level Security (RLS)** in Supabase for production
-- **Add authentication** before deploying to production
-- **Use HTTPS** in production environments
-
-## 🚢 Deployment
+## 🚀 Deployment
 
 ### Vercel (Recommended)
 
-1. Push your code to GitHub
-2. Import project to [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard
+1. Push to GitHub
+2. Import to [Vercel](https://vercel.com)
+3. Add environment variables
 4. Deploy!
 
-### Docker
+Your mobile URL: `https://your-app.vercel.app`
+
+### Testing on Mobile
 
 ```bash
-docker build -t expense-tracker .
-docker run -p 3000:3000 --env-file .env expense-tracker
+# Find your local IP
+ifconfig | grep "inet " | grep -v 127.0.0.1
+
+# Access from phone on same WiFi
+http://YOUR-LOCAL-IP:3000
 ```
+
+## 🎯 Design Principles
+
+1. **Mobile-First**: Designed for phone screens, works on desktop
+2. **Quick Input**: Large touch targets, minimal typing
+3. **Visual Feedback**: Smooth animations, clear states
+4. **One-Handed Use**: Reachable buttons, bottom sheets
+5. **Fast Performance**: Optimistic updates, smart caching
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please feel free to submit a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## 📝 Roadmap
 
-## 📝 To-Do
-
-- [ ] Add user authentication (Supabase Auth)
-- [ ] Implement expense categories with icons
-- [ ] Add expense charts and visualizations
-- [ ] Support for multiple bank formats
-- [ ] Export expenses to CSV/Excel
+- [ ] Add user authentication
 - [ ] Budget tracking and alerts
+- [ ] Weekly/monthly spending charts
+- [ ] Export to CSV/Excel
+- [ ] Receipt photo capture
+- [ ] Multiple bank email parsers
+- [ ] PWA with offline support
+- [ ] Split expense with friends
 - [ ] Recurring expense tracking
-- [ ] Receipt image uploads
 - [ ] Multi-currency support
-- [ ] Mobile app (React Native)
 
 ## 📄 License
 
-This project is licensed under the ISC License.
+ISC License
 
 ## 🙏 Acknowledgments
 
+Built with amazing tools:
 - [Next.js](https://nextjs.org/)
 - [Supabase](https://supabase.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
@@ -255,6 +263,6 @@ This project is licensed under the ISC License.
 
 ---
 
-Made with ❤️ and ☕
+Made with ❤️ for easy expense tracking on the go!
 
-For questions or support, please open an issue on GitHub.
+For questions or issues, please open a GitHub issue.
