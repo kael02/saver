@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X } from 'lucide-react'
+import { X, Sparkles } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -27,12 +27,45 @@ interface QuickExpenseFormProps {
 export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFormProps) {
   const [loading, setLoading] = useState(false)
   const [dateOption, setDateOption] = useState<'today' | 'yesterday'>('today')
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     amount: expense?.amount?.toString() || '',
     merchant: expense?.merchant || '',
     category: expense?.category || '',
     notes: expense?.notes || '',
   })
+
+  // Fetch category suggestion when merchant changes
+  useEffect(() => {
+    const fetchSuggestion = async () => {
+      if (!formData.merchant || formData.merchant.length < 3) {
+        setSuggestedCategory(null)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `/api/merchants/suggest-category?merchant=${encodeURIComponent(formData.merchant)}`
+        )
+        const data = await response.json()
+
+        if (data.suggestion && !formData.category) {
+          setSuggestedCategory(data.suggestion)
+          // Auto-apply suggestion if no category selected yet
+          setFormData(prev => ({ ...prev, category: data.suggestion }))
+        } else if (data.suggestion) {
+          setSuggestedCategory(data.suggestion)
+        } else {
+          setSuggestedCategory(null)
+        }
+      } catch (error) {
+        console.error('Error fetching suggestion:', error)
+      }
+    }
+
+    const debounceTimer = setTimeout(fetchSuggestion, 500)
+    return () => clearTimeout(debounceTimer)
+  }, [formData.merchant])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,14 +172,22 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
 
           {/* Category Pills */}
           <div className="space-y-3">
-            <Label className="text-sm text-muted-foreground">Category</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm text-muted-foreground">Category</Label>
+              {suggestedCategory && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Suggested: {suggestedCategory}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.name}
                   type="button"
                   onClick={() => setFormData({ ...formData, category: cat.name })}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all relative ${
                     formData.category === cat.name
                       ? 'bg-primary text-primary-foreground shadow-lg scale-105'
                       : 'bg-secondary hover:bg-secondary/80'
@@ -154,6 +195,12 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
                 >
                   <span className="mr-1">{cat.emoji}</span>
                   {cat.name}
+                  {suggestedCategory === cat.name && formData.category !== cat.name && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

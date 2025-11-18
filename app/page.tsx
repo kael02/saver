@@ -8,6 +8,8 @@ import { QuickExpenseForm } from '@/components/quick-expense-form'
 import { NavigationMenu } from '@/components/navigation-menu'
 import { AnalyticsCharts } from '@/components/analytics-charts'
 import { BudgetTracker } from '@/components/budget-tracker'
+import { SavingsGoals } from '@/components/savings-goals'
+import { WeeklySummary } from '@/components/weekly-summary'
 import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
@@ -29,7 +31,7 @@ export default function Home() {
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
   const [syncing, setSyncing] = useState(false)
   const [showAllExpenses, setShowAllExpenses] = useState(false)
-  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget'>('expenses')
+  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget' | 'goals' | 'summary'>('expenses')
 
   const fetchExpenses = async () => {
     try {
@@ -183,7 +185,7 @@ export default function Home() {
             <div>
               <h1 className="text-2xl font-bold">Expenses</h1>
               <p className="text-blue-100 dark:text-blue-200 text-xs">
-                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : 'Manage budget'}
+                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : 'Weekly report'}
               </p>
             </div>
           </div>
@@ -299,6 +301,10 @@ export default function Home() {
           <AnalyticsCharts expenses={expenses} />
         ) : activeView === 'budget' ? (
           <BudgetTracker expenses={expenses} />
+        ) : activeView === 'goals' ? (
+          <SavingsGoals />
+        ) : activeView === 'summary' ? (
+          <WeeklySummary expenses={expenses} />
         ) : null}
       </div>
 

@@ -11,12 +11,14 @@ import {
   Target,
   Download,
   Mail,
+  Sparkles,
+  FileText,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 interface NavigationMenuProps {
-  activeView: 'expenses' | 'analytics' | 'budget'
-  onViewChange: (view: 'expenses' | 'analytics' | 'budget') => void
+  activeView: 'expenses' | 'analytics' | 'budget' | 'goals' | 'summary'
+  onViewChange: (view: 'expenses' | 'analytics' | 'budget' | 'goals' | 'summary') => void
   onExport: () => void
   onSync: () => void
   syncing: boolean
@@ -35,9 +37,11 @@ export function NavigationMenu({
     { id: 'expenses' as const, label: 'Expenses', icon: List },
     { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
     { id: 'budget' as const, label: 'Budget', icon: Target },
+    { id: 'goals' as const, label: 'Savings Goals', icon: Sparkles },
+    { id: 'summary' as const, label: 'Weekly Summary', icon: FileText },
   ]
 
-  const handleItemClick = (view: 'expenses' | 'analytics' | 'budget') => {
+  const handleItemClick = (view: 'expenses' | 'analytics' | 'budget' | 'goals' | 'summary') => {
     onViewChange(view)
     setIsOpen(false)
   }
