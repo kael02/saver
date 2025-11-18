@@ -19,6 +19,7 @@ export class EmailService {
 
   /**
    * Fetch unread emails and parse expense information
+   * Only processes emails from trusted VIB sender: info@card.vib.com.vn
    */
   async fetchUnreadExpenses(): Promise<ParsedExpense[]> {
     return new Promise((resolve, reject) => {
@@ -32,6 +33,7 @@ export class EmailService {
       })
 
       const expenses: ParsedExpense[] = []
+      const TRUSTED_SENDER = 'info@card.vib.com.vn'
 
       imap.once('ready', () => {
         imap.openBox('INBOX', false, (err, box) => {
@@ -40,19 +42,21 @@ export class EmailService {
             return
           }
 
-          // Search for unread emails
-          imap.search(['UNSEEN'], (err, results) => {
+          // Search for unread emails from VIB only
+          imap.search(['UNSEEN', ['FROM', TRUSTED_SENDER]], (err, results) => {
             if (err) {
               reject(err)
               return
             }
 
             if (results.length === 0) {
+              console.log(`No unread emails from ${TRUSTED_SENDER}`)
               imap.end()
               resolve([])
               return
             }
 
+            console.log(`Found ${results.length} unread emails from ${TRUSTED_SENDER}`)
             const fetch = imap.fetch(results, { bodies: '' })
 
             fetch.on('message', (msg) => {
@@ -63,13 +67,23 @@ export class EmailService {
                     return
                   }
 
+                  // Double-check sender for security
+                  const from = parsed.from?.value?.[0]?.address?.toLowerCase() || ''
+                  if (from !== TRUSTED_SENDER.toLowerCase()) {
+                    console.warn(`Skipping email from untrusted sender: ${from}`)
+                    return
+                  }
+
                   const subject = parsed.subject || ''
                   const body = parsed.text || ''
 
                   // Try to parse the email
                   const expense = emailParser.parseEmail(subject, body)
                   if (expense) {
+                    console.log(`Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
                     expenses.push(expense)
+                  } else {
+                    console.log('Email from VIB but could not parse expense data')
                   }
                 })
               })
