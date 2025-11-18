@@ -69,7 +69,9 @@ At Shopee
 
 ### 🔒 Security Features
 
-- **Sender Validation**: Only processes emails from `info@card.vib.com.vn`
+- **Sender Validation**: Only processes emails from trusted senders:
+  - `info@card.vib.com.vn` (VIB Bank)
+  - `no-reply@grab.com` (Grab)
 - **Double-Check**: Validates sender address at both IMAP and parser levels
 - **Prevents Spoofing**: Ignores emails from untrusted senders
 
