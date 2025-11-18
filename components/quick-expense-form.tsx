@@ -2,10 +2,19 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import { Calendar as CalendarIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Expense } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -26,14 +35,19 @@ interface QuickExpenseFormProps {
 
 export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFormProps) {
   const [loading, setLoading] = useState(false)
+  const [date, setDate] = useState<Date>(
+    expense?.transaction_date ? new Date(expense.transaction_date) : new Date()
+  )
+  const [time, setTime] = useState(
+    expense?.transaction_date
+      ? format(new Date(expense.transaction_date), 'HH:mm')
+      : format(new Date(), 'HH:mm')
+  )
   const [formData, setFormData] = useState({
     amount: expense?.amount?.toString() || '',
     merchant: expense?.merchant || '',
     category: expense?.category || '',
     notes: expense?.notes || '',
-    transactionDate: expense?.transaction_date
-      ? new Date(expense.transaction_date).toISOString().slice(0, 16)
-      : new Date().toISOString().slice(0, 16),
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,12 +55,17 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
     setLoading(true)
 
     try {
+      // Combine date and time
+      const [hours, minutes] = time.split(':')
+      const combinedDate = new Date(date)
+      combinedDate.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+
       await onSubmit({
         amount: parseFloat(formData.amount),
         merchant: formData.merchant,
         category: formData.category || 'Other',
         notes: formData.notes,
-        transactionDate: new Date(formData.transactionDate).toISOString(),
+        transactionDate: combinedDate.toISOString(),
         // Backend will fill these from email or use defaults
         cardNumber: expense?.card_number || 'N/A',
         cardholder: expense?.cardholder || 'Manual',
@@ -149,20 +168,42 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
             </div>
           </div>
 
-          {/* Date */}
+          {/* Date & Time */}
           <div className="space-y-2">
-            <Label htmlFor="transactionDate" className="text-sm text-muted-foreground">
-              Date
+            <Label className="text-sm text-muted-foreground">
+              Date & Time
             </Label>
-            <Input
-              id="transactionDate"
-              name="transactionDate"
-              type="datetime-local"
-              value={formData.transactionDate}
-              onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
-              className="h-12"
-              required
-            />
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "flex-1 h-12 justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(newDate) => newDate && setDate(newDate)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="h-12 w-32"
+                required
+              />
+            </div>
           </div>
 
           {/* Notes */}

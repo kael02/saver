@@ -170,7 +170,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-6 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-10 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <NavigationMenu
@@ -203,7 +203,7 @@ export default function Home() {
 
       {/* Stats Cards */}
       {!loading && stats && (
-        <div className="px-4 -mt-6 mb-6">
+        <div className="px-4 -mt-4 mb-6">
           <div className="grid grid-cols-2 gap-3">
             <StatsCard
               title="Total"
