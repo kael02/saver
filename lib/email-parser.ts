@@ -12,34 +12,53 @@ export interface ParsedExpense {
 
 export class EmailParser {
   /**
+   * Strip HTML tags from text
+   */
+  private stripHtml(html: string): string {
+    return html
+      .replace(/<style[^>]*>.*?<\/style>/gis, '')
+      .replace(/<script[^>]*>.*?<\/script>/gis, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  /**
    * Parse VIB (Vietnam International Bank) transaction notification email
+   * Supports both English and Vietnamese formats
    */
   parseVIBEmail(subject: string, body: string): ParsedExpense | null {
     try {
-      // Extract card number
-      const cardNumberMatch = body.match(/Card number:\s*(\d+\*+\d+)/i)
-      const cardNumber = cardNumberMatch ? cardNumberMatch[1] : ''
+      // Strip HTML if present
+      const cleanBody = this.stripHtml(body)
 
-      // Extract cardholder name
-      const cardholderMatch = body.match(/Cardholder:\s*([^\n]+)/i)
+      console.log('Cleaned body preview:', cleanBody.substring(0, 800))
+
+      // Extract card number (Vietnamese: Số thẻ OR English: Card number)
+      const cardNumberMatch = cleanBody.match(/(?:Số thẻ|Card number):\s*[<>]*\s*(\d+\*+\d+)/i)
+      const cardNumber = cardNumberMatch ? cardNumberMatch[1].trim() : ''
+
+      // Extract cardholder name (Vietnamese: Chủ thẻ OR English: Cardholder)
+      const cardholderMatch = cleanBody.match(/(?:Chủ thẻ|Cardholder):\s*[<>]*\s*([A-Z\s]+?)(?:\s*Giao dịch|\s*Transaction|<)/i)
       const cardholder = cardholderMatch ? cardholderMatch[1].trim() : ''
 
-      // Extract transaction type
-      const transactionMatch = body.match(/Transaction:\s*([^\n]+)/i)
+      // Extract transaction type (Vietnamese: Giao dịch OR English: Transaction)
+      const transactionMatch = cleanBody.match(/(?:Giao dịch|Transaction):\s*[<>]*\s*([^<]+?)(?:\s*Giá trị|\s*Value|<)/i)
       const transactionType = transactionMatch ? transactionMatch[1].trim() : ''
 
-      // Extract amount and currency
-      const valueMatch = body.match(/Value:\s*([\d,]+)\s*([A-Z]+)/i)
+      // Extract amount and currency (Vietnamese: Giá trị OR English: Value)
+      const valueMatch = cleanBody.match(/(?:Giá trị|Value):\s*[<>]*\s*([\d,\.]+)\s*([A-Z]{3})/i)
       if (!valueMatch) {
         console.error('Could not extract amount from email')
+        console.error('Looking for pattern in:', cleanBody.substring(0, 1000))
         return null
       }
 
-      const amount = parseFloat(valueMatch[1].replace(/,/g, ''))
+      const amount = parseFloat(valueMatch[1].replace(/,/g, '').replace(/\./g, ''))
       const currency = valueMatch[2]
 
-      // Extract date and time
-      const dateMatch = body.match(/At:\s*(\d{2}:\d{2})\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
+      // Extract date and time (Vietnamese: Vào lúc OR English: At)
+      const dateMatch = cleanBody.match(/(?:Vào lúc|At):\s*[<>]*\s*(\d{2}:\d{2})\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
       if (!dateMatch) {
         console.error('Could not extract date from email')
         return null
@@ -50,14 +69,15 @@ export class EmailParser {
       const [day, month, year] = date.split('/')
       const transactionDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}:00`)
 
-      // Extract merchant
-      const merchantMatch = body.match(/At\s+([^\n]+?)(?:\s*For more information|$)/is)
+      // Extract merchant (Vietnamese: Tại OR English: At)
+      // Look for the merchant name after "Tại" or "At"
+      const merchantMatch = cleanBody.match(/(?:Tại|At)\s+[<>]*\s*([^\n<]+?)(?:\s*Để biết|For more|Email|Địa chỉ|<|$)/i)
       let merchant = 'Unknown'
       if (merchantMatch) {
-        const merchantText = merchantMatch[1].trim()
-        const lines = merchantText.split('\n')
-        merchant = lines[lines.length - 1].trim() || 'Unknown'
+        merchant = merchantMatch[1].trim() || 'Unknown'
       }
+
+      console.log('Parsed values:', { cardNumber, cardholder, transactionType, amount, currency, merchant })
 
       return {
         cardNumber,
