@@ -97,7 +97,7 @@ export class EmailParser {
   }
 
   /**
-   * Parse Grab transaction notification email
+   * Parse Grab transaction notification email (GrabFood, GrabMart, GrabCar, etc.)
    */
   parseGrabEmail(subject: string, body: string): ParsedExpense | null {
     try {
@@ -107,13 +107,71 @@ export class EmailParser {
       console.log('Parsing Grab email...')
       console.log('Cleaned body preview:', cleanBody.substring(0, 800))
 
-      // Grab emails typically contain trip/order details
-      // This is a placeholder - needs actual Grab email format
-      // TODO: Update with actual Grab email format after testing
+      // Extract total amount (Vietnamese: Tổng giá OR Tổng cộng)
+      const amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|Total)\s*[<>]*\s*₫\s*([\d,\.]+)/i)
+      if (!amountMatch) {
+        console.error('Could not extract amount from Grab email')
+        return null
+      }
 
-      console.error('Grab email parser not yet implemented')
-      console.log('Please provide a sample Grab email for parser implementation')
-      return null
+      const amount = parseFloat(amountMatch[1].replace(/,/g, '').replace(/\./g, ''))
+      const currency = 'VND'
+
+      // Extract delivery/completion time (Vietnamese: Giao đến lúc)
+      // Format: "01 Oct 22 07:44 +0700" or "Giao đến lúc 01 Oct 22 07:44"
+      const dateMatch = cleanBody.match(/(?:Giao đến lúc|Delivered at|Completed at)\s*[<>]*\s*(\d{2})\s+(\w{3})\s+(\d{2})\s+(\d{2}):(\d{2})/i)
+
+      let transactionDate: Date
+      if (dateMatch) {
+        const [, day, monthStr, year, hour, minute] = dateMatch
+        const monthMap: { [key: string]: string } = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        }
+        const month = monthMap[monthStr] || '01'
+        const fullYear = `20${year}`
+        transactionDate = new Date(`${fullYear}-${month}-${day.padStart(2, '0')}T${hour}:${minute}:00`)
+      } else {
+        // Default to now if can't parse date
+        console.warn('Could not extract date from Grab email, using current time')
+        transactionDate = new Date()
+      }
+
+      // Extract merchant/store name (Vietnamese: Đặt từ)
+      const merchantMatch = cleanBody.match(/(?:Đặt từ|Ordered from|From)\s*[<>]*\s*([^\n]+?)(?:\s*Giao đến|Delivered to|Được giao|$)/i)
+      let merchant = 'Grab'
+      if (merchantMatch) {
+        merchant = merchantMatch[1].trim() || 'Grab'
+      }
+
+      // Extract order code if available
+      const orderCodeMatch = cleanBody.match(/(?:Mã đơn hàng|Order code)\s*[<>]*\s*([A-Z0-9\-]+)/i)
+      const orderCode = orderCodeMatch ? orderCodeMatch[1].trim() : ''
+
+      // Determine transaction type based on content
+      let transactionType = 'Grab'
+      if (cleanBody.toLowerCase().includes('grabfood')) {
+        transactionType = 'GrabFood'
+      } else if (cleanBody.toLowerCase().includes('grabmart') || cleanBody.toLowerCase().includes('7-eleven')) {
+        transactionType = 'GrabMart'
+      } else if (cleanBody.toLowerCase().includes('grabcar') || cleanBody.toLowerCase().includes('grabike')) {
+        transactionType = 'GrabCar/Bike'
+      }
+
+      console.log('Parsed Grab values:', { amount, currency, merchant, transactionType, orderCode })
+
+      return {
+        cardNumber: orderCode || 'Grab',
+        cardholder: 'Grab User',
+        transactionType,
+        amount,
+        currency,
+        transactionDate: transactionDate.toISOString(),
+        merchant,
+        source: 'email',
+        emailSubject: subject,
+      }
     } catch (error) {
       console.error('Error parsing Grab email:', error)
       return null

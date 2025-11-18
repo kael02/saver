@@ -43,11 +43,19 @@ export class EmailService {
           }
 
           // Search for unread emails from trusted senders only
-          // IMAP OR condition: search for emails from any trusted sender
+          // Only emails from the last 30 days
+          const thirtyDaysAgo = new Date()
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+          const sinceDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '-')
+
+          // IMAP search criteria: UNSEEN, from trusted senders, since 30 days ago
           const searchCriteria = [
             'UNSEEN',
+            ['SINCE', sinceDate],
             ['OR', ...TRUSTED_SENDERS.map(sender => ['FROM', sender])]
           ]
+
+          console.log(`Searching for emails since: ${sinceDate}`)
 
           imap.search(searchCriteria, (err, results) => {
             if (err) {
