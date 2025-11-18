@@ -104,8 +104,10 @@ export class EmailParser {
       // Strip HTML if present
       const cleanBody = this.stripHtml(body)
 
-      console.log('Parsing Grab email...')
-      console.log('Cleaned body preview:', cleanBody.substring(0, 800))
+      // Skip pending/scheduled orders silently
+      if (cleanBody.match(/Total pending|Order for Later|We've got your Order for Later/i)) {
+        return null
+      }
 
       // Extract total amount (Vietnamese: Tổng giá OR Tổng cộng OR BẠN TRẢ)
       // Support both formats: "₫ 88000" and "24400₫"
@@ -117,7 +119,6 @@ export class EmailParser {
       }
 
       if (!amountMatch) {
-        console.error('Could not extract amount from Grab email')
         return null
       }
 
