@@ -33,7 +33,7 @@ export class EmailService {
       })
 
       const expenses: ParsedExpense[] = []
-      const TRUSTED_SENDER = 'info@card.vib.com.vn'
+      const TRUSTED_SENDERS = ['info@card.vib.com.vn', 'no-reply@grab.com']
 
       imap.once('ready', () => {
         imap.openBox('INBOX', false, (err, box) => {
@@ -42,21 +42,27 @@ export class EmailService {
             return
           }
 
-          // Search for unread emails from VIB only
-          imap.search(['UNSEEN', ['FROM', TRUSTED_SENDER]], (err, results) => {
+          // Search for unread emails from trusted senders only
+          // IMAP OR condition: search for emails from any trusted sender
+          const searchCriteria = [
+            'UNSEEN',
+            ['OR', ...TRUSTED_SENDERS.map(sender => ['FROM', sender])]
+          ]
+
+          imap.search(searchCriteria, (err, results) => {
             if (err) {
               reject(err)
               return
             }
 
             if (results.length === 0) {
-              console.log(`No unread emails from ${TRUSTED_SENDER}`)
+              console.log(`No unread emails from trusted senders: ${TRUSTED_SENDERS.join(', ')}`)
               imap.end()
               resolve([])
               return
             }
 
-            console.log(`Found ${results.length} unread emails from ${TRUSTED_SENDER}`)
+            console.log(`Found ${results.length} unread emails from trusted senders`)
             const fetch = imap.fetch(results, { bodies: '' })
 
             fetch.on('message', (msg) => {
@@ -69,10 +75,16 @@ export class EmailService {
 
                   // Double-check sender for security
                   const from = parsed.from?.value?.[0]?.address?.toLowerCase() || ''
-                  if (from !== TRUSTED_SENDER.toLowerCase()) {
+                  const isTrustedSender = TRUSTED_SENDERS.some(
+                    sender => from === sender.toLowerCase()
+                  )
+
+                  if (!isTrustedSender) {
                     console.warn(`Skipping email from untrusted sender: ${from}`)
                     return
                   }
+
+                  console.log(`Processing email from: ${from}`)
 
                   const subject = parsed.subject || ''
                   const body = parsed.text || parsed.html || ''
