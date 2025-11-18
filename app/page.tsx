@@ -55,6 +55,8 @@ export default function Home() {
   const contentRef = useRef<HTMLDivElement>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const touchStart = useRef(0)
+  const [scrolled, setScrolled] = useState(false)
+  const lastScrollY = useRef(0)
 
   const fetchExpenses = async () => {
     try {
@@ -113,6 +115,34 @@ export default function Home() {
   useEffect(() => {
     fetchExpenses()
     fetchStats()
+  }, [])
+
+  // Scroll detection for sticky header
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current) return
+
+      const currentScrollY = contentRef.current.scrollTop
+
+      if (currentScrollY > 100) {
+        setScrolled(true)
+      } else {
+        setScrolled(false)
+      }
+
+      lastScrollY.current = currentScrollY
+    }
+
+    const ref = contentRef.current
+    if (ref) {
+      ref.addEventListener('scroll', handleScroll, { passive: true })
+    }
+
+    return () => {
+      if (ref) {
+        ref.removeEventListener('scroll', handleScroll)
+      }
+    }
   }, [])
 
   const handleDelete = async (id: string) => {
@@ -346,7 +376,7 @@ export default function Home() {
   return (
     <div
       ref={contentRef}
-      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24"
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24 overflow-auto"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -368,7 +398,13 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-10 rounded-b-3xl shadow-lg">
+      <motion.div
+        animate={{
+          paddingBottom: scrolled ? '1rem' : '2.5rem',
+        }}
+        transition={{ duration: 0.3 }}
+        className="sticky top-0 z-40 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-10 rounded-b-3xl shadow-lg"
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <NavigationMenu
@@ -392,7 +428,15 @@ export default function Home() {
         </div>
 
         {/* Today's Total */}
-        <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-6">
+        <motion.div
+          animate={{
+            opacity: scrolled ? 0 : 1,
+            height: scrolled ? 0 : 'auto',
+            marginTop: scrolled ? 0 : '1rem',
+          }}
+          transition={{ duration: 0.3 }}
+          className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 overflow-hidden"
+        >
           <p className="text-blue-100 text-sm mb-2">Today's Spending</p>
           <p className="text-4xl font-bold">
             {formatCurrency(todayTotal, 'VND')}
@@ -400,8 +444,8 @@ export default function Home() {
           <p className="text-blue-100 text-sm mt-2">
             {todayExpenses.length} {todayExpenses.length === 1 ? 'expense' : 'expenses'}
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Stats Cards */}
       {loading ? (
