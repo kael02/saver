@@ -5,8 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ExpenseCard } from '@/components/expense-card'
 import { StatsCard } from '@/components/stats-card'
 import { QuickExpenseForm } from '@/components/quick-expense-form'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { AnalyticsCharts } from '@/components/analytics-charts'
+import { BudgetTracker } from '@/components/budget-tracker'
+import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
+import { exportToCSV, exportToJSON } from '@/lib/export'
 import {
   Wallet,
   TrendingDown,
@@ -14,26 +19,74 @@ import {
   Plus,
   RefreshCw,
   Mail,
+  Download,
+  BarChart3,
+  List,
+  Target,
 } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
   const [syncing, setSyncing] = useState(false)
   const [showAllExpenses, setShowAllExpenses] = useState(false)
+  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget'>('expenses')
 
   const fetchExpenses = async () => {
     try {
       const response = await fetch('/api/expenses')
       const data = await response.json()
       setExpenses(data.expenses || [])
+      setFilteredExpenses(data.expenses || [])
     } catch (error) {
       console.error('Error fetching expenses:', error)
     }
+  }
+
+  const handleFilterChange = (filters: FilterState) => {
+    let filtered = [...expenses]
+
+    // Search filter
+    if (filters.search) {
+      filtered = filtered.filter((e) =>
+        e.merchant.toLowerCase().includes(filters.search.toLowerCase())
+      )
+    }
+
+    // Category filter
+    if (filters.category && filters.category !== 'All') {
+      filtered = filtered.filter((e) => e.category === filters.category)
+    }
+
+    // Date range filter
+    const now = new Date()
+    if (filters.dateRange === 'today') {
+      filtered = filtered.filter((e) => {
+        const expenseDate = new Date(e.transaction_date).toDateString()
+        return expenseDate === now.toDateString()
+      })
+    } else if (filters.dateRange === 'week') {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      filtered = filtered.filter((e) => new Date(e.transaction_date) >= weekAgo)
+    } else if (filters.dateRange === 'month') {
+      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1)
+      filtered = filtered.filter((e) => new Date(e.transaction_date) >= monthAgo)
+    } else if (filters.dateRange === 'custom' && filters.startDate && filters.endDate) {
+      filtered = filtered.filter((e) => {
+        const expenseDate = new Date(e.transaction_date)
+        return (
+          expenseDate >= new Date(filters.startDate) &&
+          expenseDate <= new Date(filters.endDate)
+        )
+      })
+    }
+
+    setFilteredExpenses(filtered)
   }
 
   const fetchStats = async () => {
@@ -123,26 +176,29 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-6 pb-8 rounded-b-3xl shadow-lg">
+      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-6 pb-8 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold mb-1">My Expenses</h1>
-            <p className="text-blue-100 text-sm">Track your daily spending</p>
+            <p className="text-blue-100 dark:text-blue-200 text-sm">Track your daily spending</p>
           </div>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleSync}
-            disabled={syncing}
-            className="rounded-full h-12 w-12"
-          >
-            <motion.div
-              animate={{ rotate: syncing ? 360 : 0 }}
-              transition={{ duration: 1, repeat: syncing ? Infinity : 0, ease: 'linear' }}
+          <div className="flex gap-2">
+            <ThemeToggle />
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={handleSync}
+              disabled={syncing}
+              className="rounded-full h-10 w-10"
             >
-              <Mail className="h-5 w-5" />
-            </motion.div>
-          </Button>
+              <motion.div
+                animate={{ rotate: syncing ? 360 : 0 }}
+                transition={{ duration: 1, repeat: syncing ? Infinity : 0, ease: 'linear' }}
+              >
+                <Mail className="h-4 w-4" />
+              </motion.div>
+            </Button>
+          </div>
         </div>
 
         {/* Today's Total */}
@@ -183,56 +239,121 @@ export default function Home() {
         </div>
       )}
 
-      {/* Expenses List */}
-      <div className="px-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Recent Expenses</h2>
-          {expenses.length > 10 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAllExpenses(!showAllExpenses)}
-              className="gap-2"
-            >
-              <Calendar className="w-4 h-4" />
-              {showAllExpenses ? 'Show Less' : 'View All'}
-            </Button>
-          )}
+      {/* View Tabs */}
+      <div className="px-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <Button
+            variant={activeView === 'expenses' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('expenses')}
+            className="gap-2 flex-shrink-0"
+          >
+            <List className="w-4 h-4" />
+            Expenses
+          </Button>
+          <Button
+            variant={activeView === 'analytics' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('analytics')}
+            className="gap-2 flex-shrink-0"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </Button>
+          <Button
+            variant={activeView === 'budget' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('budget')}
+            className="gap-2 flex-shrink-0"
+          >
+            <Target className="w-4 h-4" />
+            Budget
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)}
+            className="gap-2 flex-shrink-0 ml-auto"
+          >
+            <Download className="w-4 h-4" />
+            Export
+          </Button>
         </div>
+      </div>
+
+      {/* Content based on active view */}
+      <div className="px-4">
+        {activeView === 'expenses' && (
+          <>
+            {/* Filters */}
+            <div className="mb-6">
+              <ExpenseFilters onFilterChange={handleFilterChange} />
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">
+                {filteredExpenses.length === expenses.length
+                  ? 'All Expenses'
+                  : `${filteredExpenses.length} of ${expenses.length} expenses`}
+              </h2>
+              {filteredExpenses.length > 10 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllExpenses(!showAllExpenses)}
+                  className="gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  {showAllExpenses ? 'Show Less' : 'View All'}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
             <p className="mt-4 text-muted-foreground text-sm">Loading...</p>
           </div>
-        ) : expenses.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16 px-4"
-          >
-            <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-              <Wallet className="w-10 h-10 text-muted-foreground" />
+        ) : activeView === 'expenses' ? (
+          expenses.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16 px-4"
+            >
+              <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <Wallet className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
+              <p className="text-muted-foreground text-sm mb-6">
+                Add your first expense or sync from emails
+              </p>
+            </motion.div>
+          ) : filteredExpenses.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No expenses match your filters</p>
             </div>
-            <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">
-              Add your first expense or sync from emails
-            </p>
-          </motion.div>
-        ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {(showAllExpenses ? expenses : expenses.slice(0, 10)).map((expense) => (
-                <ExpenseCard
-                  key={expense.id}
-                  expense={expense}
-                  onDelete={handleDelete}
-                  onEdit={handleEdit}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-3">
+              <AnimatePresence mode="popLayout">
+                {(showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, 10)).map((expense) => (
+                  <ExpenseCard
+                    key={expense.id}
+                    expense={expense}
+                    onDelete={handleDelete}
+                    onEdit={handleEdit}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )
+        ) : activeView === 'analytics' ? (
+          <AnalyticsCharts expenses={expenses} />
+        ) : activeView === 'budget' ? (
+          <BudgetTracker expenses={expenses} />
+        ) : null}
       </div>
 
       {/* Floating Add Button */}
