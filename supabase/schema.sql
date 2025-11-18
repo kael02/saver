@@ -1,14 +1,14 @@
 -- Create expenses table
 CREATE TABLE IF NOT EXISTS expenses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    card_number TEXT NOT NULL,
-    cardholder TEXT NOT NULL,
-    transaction_type TEXT NOT NULL,
+    card_number TEXT,  -- Optional: only filled from email notifications
+    cardholder TEXT,   -- Optional: only filled from email notifications
+    transaction_type TEXT DEFAULT 'Expense',  -- Optional: defaults to 'Expense'
     amount DECIMAL(15, 2) NOT NULL,
     currency TEXT NOT NULL DEFAULT 'VND',
     transaction_date TIMESTAMPTZ NOT NULL,
-    merchant TEXT NOT NULL,
-    category TEXT,
+    merchant TEXT NOT NULL,  -- What you bought (description)
+    category TEXT DEFAULT 'Other',  -- Food, Transport, Shopping, etc.
     notes TEXT,
     source TEXT NOT NULL CHECK (source IN ('manual', 'email')),
     email_subject TEXT,

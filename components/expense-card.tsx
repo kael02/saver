@@ -1,11 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Trash2, Edit } from 'lucide-react'
+import { Trash2, Edit, Mail } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 interface ExpenseCardProps {
@@ -14,88 +13,92 @@ interface ExpenseCardProps {
   onEdit?: (expense: Expense) => void
 }
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  Food: '🍔',
+  Transport: '🚗',
+  Shopping: '🛍️',
+  Entertainment: '🎬',
+  Bills: '💡',
+  Health: '🏥',
+  Other: '📦',
+}
+
 export function ExpenseCard({ expense, onDelete, onEdit }: ExpenseCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="bg-card rounded-2xl p-4 shadow-sm border hover:shadow-md transition-all active:scale-98"
     >
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-lg font-semibold">{expense.merchant}</h3>
-                <Badge variant={expense.source === 'email' ? 'default' : 'secondary'}>
-                  {expense.source === 'email' ? '📧 Auto' : '✍️ Manual'}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {expense.transaction_type}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-destructive">
-                {formatCurrency(expense.amount, expense.currency)}
-              </p>
-            </div>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="text-3xl">
+            {CATEGORY_EMOJI[expense.category || 'Other'] || '📦'}
           </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg truncate">{expense.merchant}</h3>
+            <p className="text-sm text-muted-foreground">
+              {formatDate(expense.transaction_date)}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-bold text-destructive whitespace-nowrap">
+            {formatCurrency(expense.amount, expense.currency)}
+          </p>
+        </div>
+      </div>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Card</span>
-              <span className="font-mono">{expense.card_number}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Cardholder</span>
-              <span>{expense.cardholder}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Date</span>
-              <span>{formatDate(expense.transaction_date)}</span>
-            </div>
-            {expense.category && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Category</span>
-                <Badge variant="outline">{expense.category}</Badge>
-              </div>
-            )}
-            {expense.notes && (
-              <div className="mt-3 pt-3 border-t">
-                <p className="text-muted-foreground text-xs">Notes:</p>
-                <p className="mt-1">{expense.notes}</p>
-              </div>
-            )}
-          </div>
+      {expense.notes && (
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+          {expense.notes}
+        </p>
+      )}
 
-          <div className="flex gap-2 mt-4 pt-4 border-t">
-            {onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(expense)}
-                className="flex-1"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <Badge variant={expense.source === 'email' ? 'default' : 'secondary'} className="text-xs">
+            {expense.source === 'email' ? (
+              <>
+                <Mail className="w-3 h-3 mr-1" />
+                Auto
+              </>
+            ) : (
+              'Manual'
             )}
-            {onDelete && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onDelete(expense.id)}
-                className="flex-1"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </Badge>
+          {expense.category && (
+            <Badge variant="outline" className="text-xs">
+              {expense.category}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex gap-1">
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(expense)}
+              className="h-8 w-8"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(expense.id)}
+              className="h-8 w-8 text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
     </motion.div>
   )
 }
