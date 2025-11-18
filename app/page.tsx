@@ -239,8 +239,8 @@ export default function Home() {
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.5, type: 'spring' }}
-        className="fixed bottom-6 right-6 z-40"
+        transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 20 }}
+        className="fixed bottom-8 right-6 z-50 sm:bottom-6"
       >
         <Button
           size="lg"
@@ -248,9 +248,9 @@ export default function Home() {
             setEditingExpense(undefined)
             setShowForm(true)
           }}
-          className="h-16 w-16 rounded-full shadow-2xl hover:shadow-xl transition-shadow"
+          className="h-16 w-16 sm:h-14 sm:w-14 rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110"
         >
-          <Plus className="h-7 w-7" />
+          <Plus className="h-8 w-8 sm:h-7 sm:w-7" />
         </Button>
       </motion.div>
 
