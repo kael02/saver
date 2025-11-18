@@ -10,6 +10,7 @@ import { AnalyticsCharts } from '@/components/analytics-charts'
 import { BudgetTracker } from '@/components/budget-tracker'
 import { SavingsGoals } from '@/components/savings-goals'
 import { WeeklySummary } from '@/components/weekly-summary'
+import { CategoryInsights } from '@/components/category-insights'
 import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
@@ -31,7 +32,7 @@ export default function Home() {
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
   const [syncing, setSyncing] = useState(false)
   const [showAllExpenses, setShowAllExpenses] = useState(false)
-  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget' | 'goals' | 'summary'>('expenses')
+  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget' | 'goals' | 'summary' | 'insights'>('expenses')
 
   const fetchExpenses = async () => {
     try {
@@ -185,7 +186,7 @@ export default function Home() {
             <div>
               <h1 className="text-2xl font-bold">Expenses</h1>
               <p className="text-blue-100 dark:text-blue-200 text-xs">
-                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : 'Weekly report'}
+                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : activeView === 'summary' ? 'Weekly report' : 'Spending patterns'}
               </p>
             </div>
           </div>
@@ -305,6 +306,8 @@ export default function Home() {
           <SavingsGoals />
         ) : activeView === 'summary' ? (
           <WeeklySummary expenses={expenses} />
+        ) : activeView === 'insights' ? (
+          <CategoryInsights expenses={expenses} />
         ) : null}
       </div>
 
