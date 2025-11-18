@@ -80,8 +80,18 @@ export class EmailParser {
    * Main parser function - detects bank and routes to appropriate parser
    */
   parseEmail(subject: string, body: string): ParsedExpense | null {
-    // Check for VIB email
-    if (subject.toLowerCase().includes('vib') || body.toLowerCase().includes('vietnam international bank')) {
+    const subjectLower = subject.toLowerCase()
+    const bodyLower = body.toLowerCase()
+
+    // Check for VIB email - multiple possible indicators
+    if (
+      subjectLower.includes('vib') ||
+      bodyLower.includes('vietnam international bank') ||
+      bodyLower.includes('vib online') ||
+      bodyLower.includes('card.vib.com.vn') ||
+      bodyLower.includes('card number:') // Common in transaction emails
+    ) {
+      console.log('Detected VIB email format, attempting to parse...')
       return this.parseVIBEmail(subject, body)
     }
 
@@ -89,7 +99,7 @@ export class EmailParser {
     // if (subject.includes('Vietcombank')) return this.parseVietcombankEmail(subject, body)
     // if (subject.includes('Techcombank')) return this.parseTechcombankEmail(subject, body)
 
-    console.log('Unknown email format')
+    console.log('Unknown email format - does not match VIB patterns')
     return null
   }
 }
