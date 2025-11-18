@@ -107,8 +107,15 @@ export class EmailParser {
       console.log('Parsing Grab email...')
       console.log('Cleaned body preview:', cleanBody.substring(0, 800))
 
-      // Extract total amount (Vietnamese: Tổng giá OR Tổng cộng)
-      const amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|Total)\s*[<>]*\s*₫\s*([\d,\.]+)/i)
+      // Extract total amount (Vietnamese: Tổng giá OR Tổng cộng OR BẠN TRẢ)
+      // Support both formats: "₫ 88000" and "24400₫"
+      let amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|BẠN TRẢ|Total)\s*[<>]*\s*(?:₫\s*)?([\d,\.]+)\s*₫/i)
+
+      // Fallback to format with ₫ before amount
+      if (!amountMatch) {
+        amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|BẠN TRẢ|Total)\s*[<>]*\s*₫\s*([\d,\.]+)/i)
+      }
+
       if (!amountMatch) {
         console.error('Could not extract amount from Grab email')
         return null
@@ -117,9 +124,9 @@ export class EmailParser {
       const amount = parseFloat(amountMatch[1].replace(/,/g, '').replace(/\./g, ''))
       const currency = 'VND'
 
-      // Extract delivery/completion time (Vietnamese: Giao đến lúc)
-      // Format: "01 Oct 22 07:44 +0700" or "Giao đến lúc 01 Oct 22 07:44"
-      const dateMatch = cleanBody.match(/(?:Giao đến lúc|Delivered at|Completed at)\s*[<>]*\s*(\d{2})\s+(\w{3})\s+(\d{2})\s+(\d{2}):(\d{2})/i)
+      // Extract delivery/completion time (Vietnamese: Giao đến lúc OR Ngày | Giờ)
+      // Format: "01 Oct 22 07:44 +0700" or "Giao đến lúc 01 Oct 22 07:44" or "Ngày | Giờ 08 Nov 25 18:38"
+      const dateMatch = cleanBody.match(/(?:Giao đến lúc|Delivered at|Completed at|Ngày\s*\|\s*Giờ)\s*[<>]*\s*(\d{2})\s+(\w{3})\s+(\d{2})\s+(\d{2}):(\d{2})/i)
 
       let transactionDate: Date
       if (dateMatch) {
