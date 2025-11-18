@@ -159,18 +159,47 @@ export class EmailService {
   }
 }
 
-// Create singleton instance
-let emailService: EmailService | null = null
+// Create singleton instances for multiple email accounts
+let emailServices: EmailService[] | null = null
 
-export function getEmailService(): EmailService {
-  if (!emailService) {
-    emailService = new EmailService({
-      user: process.env.EMAIL_USER || '',
-      password: process.env.EMAIL_PASSWORD || '',
-      host: process.env.EMAIL_HOST || 'imap.gmail.com',
-      port: parseInt(process.env.EMAIL_PORT || '993'),
-      tls: process.env.EMAIL_TLS === 'true',
-    })
+export function getEmailServices(): EmailService[] {
+  if (!emailServices) {
+    emailServices = []
+
+    // Primary email account
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+      emailServices.push(
+        new EmailService({
+          user: process.env.EMAIL_USER,
+          password: process.env.EMAIL_PASSWORD,
+          host: process.env.EMAIL_HOST || 'imap.gmail.com',
+          port: parseInt(process.env.EMAIL_PORT || '993'),
+          tls: process.env.EMAIL_TLS === 'true',
+        })
+      )
+    }
+
+    // Secondary email account (optional)
+    if (process.env.EMAIL_USER_2 && process.env.EMAIL_PASSWORD_2) {
+      emailServices.push(
+        new EmailService({
+          user: process.env.EMAIL_USER_2,
+          password: process.env.EMAIL_PASSWORD_2,
+          host: process.env.EMAIL_HOST_2 || 'imap.gmail.com',
+          port: parseInt(process.env.EMAIL_PORT_2 || '993'),
+          tls: process.env.EMAIL_TLS_2 === 'true',
+        })
+      )
+    }
   }
-  return emailService
+  return emailServices
+}
+
+// Backward compatibility - returns first email service
+export function getEmailService(): EmailService {
+  const services = getEmailServices()
+  if (services.length === 0) {
+    throw new Error('No email services configured')
+  }
+  return services[0]
 }
