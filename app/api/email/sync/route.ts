@@ -53,8 +53,9 @@ export async function POST() {
     })
   } catch (error) {
     console.error('Error syncing emails:', error)
+    // Never expose internal error details that might contain credentials
     return NextResponse.json(
-      { error: 'Failed to sync emails', details: String(error) },
+      { error: 'Failed to sync emails' },
       { status: 500 }
     )
   }
