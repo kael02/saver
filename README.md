@@ -56,6 +56,9 @@ A beautiful, mobile-first expense tracking app built with Next.js that automatic
 Supports **VIB (Vietnam International Bank)** transaction notifications:
 
 ```
+From: info@card.vib.com.vn
+Subject: Transaction notification VIB Online Plus 2in1 Credit Card
+
 Card number: 5138***5758
 Cardholder: TRAN CAO KHANG
 Transaction: Payment for services and goods
@@ -63,6 +66,12 @@ Value: 87,000 VND
 At: 01:03 11/17/2025
 At Shopee
 ```
+
+### 🔒 Security Features
+
+- **Sender Validation**: Only processes emails from `info@card.vib.com.vn`
+- **Double-Check**: Validates sender address at both IMAP and parser levels
+- **Prevents Spoofing**: Ignores emails from untrusted senders
 
 Emails are parsed and expenses are created automatically with:
 - Amount and currency
