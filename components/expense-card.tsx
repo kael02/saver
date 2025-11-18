@@ -32,20 +32,20 @@ export function ExpenseCard({ expense, onDelete, onEdit }: ExpenseCardProps) {
       exit={{ opacity: 0, scale: 0.9 }}
       className="bg-card rounded-2xl p-4 shadow-sm border hover:shadow-md transition-all active:scale-98"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="text-3xl">
+      <div className="flex items-start justify-between mb-3 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <div className="text-2xl sm:text-3xl flex-shrink-0">
             {CATEGORY_EMOJI[expense.category || 'Other'] || '📦'}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg truncate">{expense.merchant}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-semibold text-base sm:text-lg truncate">{expense.merchant}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {formatDate(expense.transaction_date)}
             </p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xl font-bold text-destructive whitespace-nowrap">
+        <div className="text-right flex-shrink-0">
+          <p className="text-base sm:text-xl font-bold text-destructive">
             {formatCurrency(expense.amount, expense.currency)}
           </p>
         </div>

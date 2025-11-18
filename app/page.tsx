@@ -5,24 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ExpenseCard } from '@/components/expense-card'
 import { StatsCard } from '@/components/stats-card'
 import { QuickExpenseForm } from '@/components/quick-expense-form'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { NavigationMenu } from '@/components/navigation-menu'
 import { AnalyticsCharts } from '@/components/analytics-charts'
 import { BudgetTracker } from '@/components/budget-tracker'
 import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
-import { exportToCSV, exportToJSON } from '@/lib/export'
+import { exportToCSV } from '@/lib/export'
 import {
   Wallet,
   TrendingDown,
   Calendar,
   Plus,
-  RefreshCw,
-  Mail,
-  Download,
-  BarChart3,
-  List,
-  Target,
 } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
@@ -176,28 +170,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-6 pb-8 rounded-b-3xl shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-1">My Expenses</h1>
-            <p className="text-blue-100 dark:text-blue-200 text-sm">Track your daily spending</p>
-          </div>
-          <div className="flex gap-2">
-            <ThemeToggle />
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={handleSync}
-              disabled={syncing}
-              className="rounded-full h-10 w-10"
-            >
-              <motion.div
-                animate={{ rotate: syncing ? 360 : 0 }}
-                transition={{ duration: 1, repeat: syncing ? Infinity : 0, ease: 'linear' }}
-              >
-                <Mail className="h-4 w-4" />
-              </motion.div>
-            </Button>
+      <div className="bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-6 rounded-b-3xl shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <NavigationMenu
+              activeView={activeView}
+              onViewChange={setActiveView}
+              onExport={() => exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)}
+              onSync={handleSync}
+              syncing={syncing}
+            />
+            <div>
+              <h1 className="text-2xl font-bold">Expenses</h1>
+              <p className="text-blue-100 dark:text-blue-200 text-xs">
+                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : 'Manage budget'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -238,48 +226,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* View Tabs */}
-      <div className="px-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <Button
-            variant={activeView === 'expenses' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveView('expenses')}
-            className="gap-2 flex-shrink-0"
-          >
-            <List className="w-4 h-4" />
-            Expenses
-          </Button>
-          <Button
-            variant={activeView === 'analytics' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveView('analytics')}
-            className="gap-2 flex-shrink-0"
-          >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </Button>
-          <Button
-            variant={activeView === 'budget' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveView('budget')}
-            className="gap-2 flex-shrink-0"
-          >
-            <Target className="w-4 h-4" />
-            Budget
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)}
-            className="gap-2 flex-shrink-0 ml-auto"
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
-        </div>
-      </div>
 
       {/* Content based on active view */}
       <div className="px-4">
