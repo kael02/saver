@@ -97,11 +97,45 @@ export class EmailParser {
   }
 
   /**
-   * Main parser function - detects bank and routes to appropriate parser
+   * Parse Grab transaction notification email
+   */
+  parseGrabEmail(subject: string, body: string): ParsedExpense | null {
+    try {
+      // Strip HTML if present
+      const cleanBody = this.stripHtml(body)
+
+      console.log('Parsing Grab email...')
+      console.log('Cleaned body preview:', cleanBody.substring(0, 800))
+
+      // Grab emails typically contain trip/order details
+      // This is a placeholder - needs actual Grab email format
+      // TODO: Update with actual Grab email format after testing
+
+      console.error('Grab email parser not yet implemented')
+      console.log('Please provide a sample Grab email for parser implementation')
+      return null
+    } catch (error) {
+      console.error('Error parsing Grab email:', error)
+      return null
+    }
+  }
+
+  /**
+   * Main parser function - detects service and routes to appropriate parser
    */
   parseEmail(subject: string, body: string): ParsedExpense | null {
     const subjectLower = subject.toLowerCase()
     const bodyLower = body.toLowerCase()
+
+    // Check for Grab email
+    if (
+      subjectLower.includes('grab') ||
+      bodyLower.includes('grab') ||
+      bodyLower.includes('no-reply@grab.com')
+    ) {
+      console.log('Detected Grab email format, attempting to parse...')
+      return this.parseGrabEmail(subject, body)
+    }
 
     // Check for VIB email - multiple possible indicators
     if (
@@ -115,11 +149,11 @@ export class EmailParser {
       return this.parseVIBEmail(subject, body)
     }
 
-    // Add more bank parsers here
+    // Add more parsers here
     // if (subject.includes('Vietcombank')) return this.parseVietcombankEmail(subject, body)
     // if (subject.includes('Techcombank')) return this.parseTechcombankEmail(subject, body)
 
-    console.log('Unknown email format - does not match VIB patterns')
+    console.log('Unknown email format - does not match known patterns')
     return null
   }
 }

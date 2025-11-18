@@ -1,19 +1,29 @@
 import { NextResponse } from 'next/server'
-import { getEmailService } from '@/lib/email-service'
+import { getEmailServices } from '@/lib/email-service'
 import { supabase } from '@/lib/supabase'
 
 export async function POST() {
   try {
-    // Check if email credentials are configured
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    const emailServices = getEmailServices()
+
+    // Check if any email accounts are configured
+    if (emailServices.length === 0) {
       return NextResponse.json(
-        { error: 'Email credentials not configured' },
+        { error: 'No email accounts configured' },
         { status: 400 }
       )
     }
 
-    const emailService = getEmailService()
-    const expenses = await emailService.fetchUnreadExpenses()
+    console.log(`Syncing from ${emailServices.length} email account(s)...`)
+
+    // Fetch expenses from all configured email accounts
+    const fetchPromises = emailServices.map((service, index) => {
+      console.log(`Fetching from email account ${index + 1}...`)
+      return service.fetchUnreadExpenses()
+    })
+
+    const allExpensesArrays = await Promise.all(fetchPromises)
+    const expenses = allExpensesArrays.flat()
 
     if (expenses.length === 0) {
       return NextResponse.json({
@@ -22,6 +32,8 @@ export async function POST() {
         expenses: [],
       })
     }
+
+    console.log(`Found ${expenses.length} total expenses from all accounts`)
 
     // Insert expenses into database
     const insertPromises = expenses.map((expense) =>
@@ -46,9 +58,10 @@ export async function POST() {
     const failed = results.filter((r) => r.status === 'rejected').length
 
     return NextResponse.json({
-      message: `Synced ${successful} expenses`,
+      message: `Synced ${successful} expenses from ${emailServices.length} account(s)`,
       count: successful,
       failed,
+      accounts: emailServices.length,
       expenses,
     })
   } catch (error) {
