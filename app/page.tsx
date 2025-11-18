@@ -14,6 +14,7 @@ import { SavingsGoals } from '@/components/savings-goals'
 import { WeeklySummary } from '@/components/weekly-summary'
 import { CategoryInsights } from '@/components/category-insights'
 import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
+import { PushNotificationManager } from '@/components/push-notification-manager'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, hapticFeedback } from '@/lib/utils'
@@ -650,6 +651,9 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
+
+      {/* Push Notification Manager */}
+      <PushNotificationManager />
     </div>
   )
 }
