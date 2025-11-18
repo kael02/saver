@@ -2,19 +2,10 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { format } from 'date-fns'
-import { Calendar as CalendarIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import type { Expense } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -35,9 +26,7 @@ interface QuickExpenseFormProps {
 
 export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFormProps) {
   const [loading, setLoading] = useState(false)
-  const [date, setDate] = useState<Date>(
-    expense?.transaction_date ? new Date(expense.transaction_date) : new Date()
-  )
+  const [dateOption, setDateOption] = useState<'today' | 'yesterday'>('today')
   const [formData, setFormData] = useState({
     amount: expense?.amount?.toString() || '',
     merchant: expense?.merchant || '',
@@ -50,17 +39,17 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
     setLoading(true)
 
     try {
-      // Use the selected date with current time or keep original time if editing
-      const submitDate = new Date(date)
-      if (expense?.transaction_date) {
-        // Keep the original time when editing
-        const originalDate = new Date(expense.transaction_date)
-        submitDate.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0)
-      } else {
-        // Use current time for new expenses
-        const now = new Date()
-        submitDate.setHours(now.getHours(), now.getMinutes(), 0, 0)
+      const now = new Date()
+      const submitDate = new Date()
+
+      if (dateOption === 'yesterday') {
+        // Set to yesterday
+        submitDate.setDate(now.getDate() - 1)
       }
+      // 'today' is already set by default
+
+      // Use current time
+      submitDate.setHours(now.getHours(), now.getMinutes(), 0, 0)
 
       await onSubmit({
         amount: parseFloat(formData.amount),
@@ -175,28 +164,30 @@ export function QuickExpenseForm({ expense, onSubmit, onCancel }: QuickExpenseFo
             <Label className="text-sm text-muted-foreground">
               Date
             </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full h-12 justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(newDate) => newDate && setDate(newDate)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDateOption('today')}
+                className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  dateOption === 'today'
+                    ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                    : 'bg-secondary hover:bg-secondary/80'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateOption('yesterday')}
+                className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  dateOption === 'yesterday'
+                    ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                    : 'bg-secondary hover:bg-secondary/80'
+                }`}
+              >
+                Yesterday
+              </button>
+            </div>
           </div>
 
           {/* Notes */}
