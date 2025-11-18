@@ -75,15 +75,22 @@ export class EmailService {
                   }
 
                   const subject = parsed.subject || ''
-                  const body = parsed.text || ''
+                  const body = parsed.text || parsed.html || ''
+
+                  // Debug logging
+                  console.log('=== EMAIL DEBUG ===')
+                  console.log('Subject:', subject)
+                  console.log('Body preview:', body.substring(0, 500))
+                  console.log('===================')
 
                   // Try to parse the email
                   const expense = emailParser.parseEmail(subject, body)
                   if (expense) {
-                    console.log(`Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
+                    console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
                     expenses.push(expense)
                   } else {
-                    console.log('Email from VIB but could not parse expense data')
+                    console.log('✗ Could not parse expense data')
+                    console.log('Full body for debugging:', body)
                   }
                 })
               })
