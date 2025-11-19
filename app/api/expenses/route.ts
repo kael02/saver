@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 // GET all expenses
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get('limit') || '100'
     const offset = searchParams.get('offset') || '0'
@@ -15,6 +24,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('expenses')
       .select('*')
+      .eq('user_id', user.id)
       .order('transaction_date', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1)
 
@@ -50,12 +60,22 @@ export async function GET(request: NextRequest) {
 // POST create new expense
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     const { data, error } = await supabase
       .from('expenses')
       .insert([
         {
+          user_id: user.id,
           card_number: body.cardNumber,
           cardholder: body.cardholder,
           transaction_type: body.transactionType,
