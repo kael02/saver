@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 // GET single expense
 export async function GET(
@@ -7,10 +7,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
       .eq('id', params.id)
+      .eq('user_id', user.id)
       .single()
 
     if (error) {
@@ -30,6 +40,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     const { data, error } = await supabase
@@ -46,10 +65,15 @@ export async function PUT(
         notes: body.notes,
       })
       .eq('id', params.id)
+      .eq('user_id', user.id)
       .select()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
     }
 
     return NextResponse.json({ expense: data[0] })
@@ -65,10 +89,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { error } = await supabase
       .from('expenses')
       .delete()
       .eq('id', params.id)
+      .eq('user_id', user.id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
