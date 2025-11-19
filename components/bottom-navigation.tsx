@@ -37,7 +37,7 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavProps) {
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className="relative flex flex-col items-center justify-center min-w-[64px] py-1 px-3 rounded-lg transition-all active:scale-95"
+              className="relative flex flex-col items-center justify-center min-w-touch min-h-touch py-1 px-3 rounded-lg transition-all active:scale-95"
             >
               {/* Active indicator */}
               {isActive && (
@@ -51,7 +51,7 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavProps) {
               {/* Icon */}
               <div className="relative">
                 <Icon
-                  className={`h-6 w-6 transition-colors ${
+                  className={`h-5 w-5 sm:h-6 sm:w-6 transition-colors ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 />
@@ -66,7 +66,7 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavProps) {
 
               {/* Label */}
               <span
-                className={`text-[10px] mt-1 font-medium transition-colors ${
+                className={`text-[9px] sm:text-[10px] mt-1 font-medium transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >

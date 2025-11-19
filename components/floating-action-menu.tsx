@@ -97,16 +97,16 @@ export function FloatingActionMenu({
                     }}
                     className="flex items-center gap-3"
                   >
-                    <span className="bg-card px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
+                    <span className="bg-card px-3 py-1.5 rounded-lg shadow-lg text-xs sm:text-sm font-medium whitespace-nowrap">
                       {action.label}
                     </span>
                     <Button
                       size="lg"
                       onClick={action.onClick}
                       disabled={action.disabled}
-                      className={`h-14 w-14 rounded-full shadow-lg bg-gradient-to-br ${action.color} hover:scale-105 transition-transform text-white`}
+                      className={`min-h-touch-lg min-w-touch-lg rounded-full shadow-lg bg-gradient-to-br ${action.color} hover:scale-105 transition-transform text-white`}
                     >
-                      <Icon className={`h-6 w-6 text-white ${action.disabled && syncing ? 'animate-spin' : ''}`} />
+                      <Icon className={`h-5 w-5 sm:h-6 sm:w-6 text-white ${action.disabled && syncing ? 'animate-spin' : ''}`} />
                     </Button>
                   </motion.div>
                 )
@@ -127,9 +127,9 @@ export function FloatingActionMenu({
           <Button
             size="lg"
             onClick={toggleMenu}
-            className="h-16 w-16 rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110 text-white"
+            className="min-h-touch-xl min-w-touch-xl rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110 text-white"
           >
-            {isOpen ? <X className="h-7 w-7 text-white" /> : <Plus className="h-7 w-7 text-white" />}
+            {isOpen ? <X className="h-6 w-6 sm:h-7 sm:w-7 text-white" /> : <Plus className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
           </Button>
         </motion.div>
       </div>
