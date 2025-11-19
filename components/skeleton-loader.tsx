@@ -6,7 +6,9 @@ interface SkeletonProps {
 
 export function Skeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn('animate-pulse bg-muted rounded-md', className)} />
+    <div className={cn('relative overflow-hidden bg-muted rounded-md', className)}>
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+    </div>
   )
 }
 
