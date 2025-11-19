@@ -69,8 +69,8 @@ export function FloatingActionMenu({
         )}
       </AnimatePresence>
 
-      {/* Action buttons */}
-      <div className="fixed bottom-8 right-6 z-50 sm:bottom-6">
+      {/* Action buttons - Positioned above bottom nav */}
+      <div className="fixed right-6 z-50" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
         <AnimatePresence>
           {isOpen && (
             <motion.div
