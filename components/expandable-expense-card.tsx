@@ -5,8 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { formatCurrency, formatDate, getCategoryColor, hapticFeedback } from '@/lib/utils'
-import { Trash2, Edit, Mail, ChevronDown, ChevronUp, Clock, CreditCard, User, Calendar } from 'lucide-react'
+import { Trash2, Edit, Mail, ChevronDown, ChevronUp, Clock, CreditCard, User, Calendar, AlertTriangle } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 interface ExpandableExpenseCardProps {
@@ -30,14 +40,21 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(expense.notes || '')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
 
-  const handleDelete = () => {
+  const handleDeleteClick = () => {
+    hapticFeedback('light')
+    setShowDeleteDialog(true)
+  }
+
+  const handleConfirmDelete = () => {
     if (onDelete) {
       hapticFeedback('heavy')
       onDelete(expense.id)
     }
+    setShowDeleteDialog(false)
   }
 
   const handleEdit = () => {
@@ -232,7 +249,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                 size="icon"
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleDelete()
+                  handleDeleteClick()
                 }}
                 className="h-8 w-8 text-destructive"
               >
@@ -241,6 +258,33 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             )}
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-center text-lg sm:text-xl">Delete Expense?</AlertDialogTitle>
+              <AlertDialogDescription className="text-center text-sm sm:text-base">
+                Are you sure you want to delete this expense from <span className="font-semibold">{expense.merchant}</span>?
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0">
+              <AlertDialogCancel onClick={() => hapticFeedback('light')} className="min-h-touch">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="min-h-touch bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </motion.div>
   )
 }
