@@ -281,12 +281,10 @@ export default function Home() {
       console.error('Error deleting expense:', error);
       toast.error('Failed to delete expense');
       if (expenseToDelete) {
-        setExpenses((prev) => {
-          const newExpenses = [...prev];
-          newExpenses.splice(index, 0, expenseToDelete);
-          return newExpenses;
-        });
-        applyFilters(expenses);
+        const restoredExpenses = [...expenses];
+        restoredExpenses.splice(index, 0, expenseToDelete);
+        setExpenses(restoredExpenses);
+        applyFilters(restoredExpenses);
       }
     }
   };
@@ -297,12 +295,10 @@ export default function Home() {
     hapticFeedback('light');
 
     // Restore optimistically
-    setExpenses((prev) => {
-      const newExpenses = [...prev];
-      newExpenses.splice(deletedExpense.index, 0, deletedExpense.expense);
-      return newExpenses;
-    });
-    applyFilters(expenses);
+    const restoredExpenses = [...expenses];
+    restoredExpenses.splice(deletedExpense.index, 0, deletedExpense.expense);
+    setExpenses(restoredExpenses);
+    applyFilters(restoredExpenses);
 
     try {
       // Re-create the expense
@@ -330,10 +326,9 @@ export default function Home() {
     } catch (error) {
       console.error('Error restoring expense:', error);
       toast.error('Failed to restore expense');
-      setExpenses((prev) =>
-        prev.filter((e) => e.id !== deletedExpense.expense.id)
-      );
-      applyFilters(expenses);
+      const filteredExpenses = expenses.filter((e) => e.id !== deletedExpense.expense.id);
+      setExpenses(filteredExpenses);
+      applyFilters(filteredExpenses);
     }
   };
 
@@ -392,15 +387,16 @@ export default function Home() {
     };
 
     // Optimistic update
+    let updatedExpenses: Expense[];
     if (editingExpense) {
-      setExpenses((prev) =>
-        prev.map((e) => (e.id === editingExpense.id ? optimisticExpense : e))
-      );
+      updatedExpenses = expenses.map((e) => (e.id === editingExpense.id ? optimisticExpense : e));
+      setExpenses(updatedExpenses);
     } else {
-      setExpenses((prev) => [optimisticExpense, ...prev]);
+      updatedExpenses = [optimisticExpense, ...expenses];
+      setExpenses(updatedExpenses);
       celebrateSuccess(); // Celebrate first expense
     }
-    applyFilters(expenses);
+    applyFilters(updatedExpenses);
 
     setShowForm(false);
     setEditingExpense(undefined);
@@ -432,17 +428,19 @@ export default function Home() {
         success: editingExpense ? 'Expense updated!' : 'Expense added!',
         error: (err) => {
           // Rollback on error
+          let rolledBackExpenses: Expense[];
           if (editingExpense) {
             const original = expenses.find((e) => e.id === editingExpense.id);
             if (original) {
-              setExpenses((prev) =>
-                prev.map((e) => (e.id === editingExpense.id ? original : e))
-              );
+              rolledBackExpenses = expenses.map((e) => (e.id === editingExpense.id ? original : e));
+              setExpenses(rolledBackExpenses);
+              applyFilters(rolledBackExpenses);
             }
           } else {
-            setExpenses((prev) => prev.filter((e) => e.id !== tempId));
+            rolledBackExpenses = expenses.filter((e) => e.id !== tempId);
+            setExpenses(rolledBackExpenses);
+            applyFilters(rolledBackExpenses);
           }
-          applyFilters(expenses);
           return err.message || 'Failed to save expense';
         },
       }
