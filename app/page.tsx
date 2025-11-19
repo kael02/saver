@@ -2,23 +2,29 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSwipeable } from 'react-swipeable'
 import { toast } from 'sonner'
-import { ExpenseCard } from '@/components/expense-card'
+import { ExpandableExpenseCard } from '@/components/expandable-expense-card'
 import { StatsCard } from '@/components/stats-card'
 import { ExpenseCardSkeleton, StatsCardSkeleton } from '@/components/skeleton-loader'
 import { QuickExpenseForm } from '@/components/quick-expense-form'
-import { NavigationMenu } from '@/components/navigation-menu'
+import { BottomNavigation } from '@/components/bottom-navigation'
 import { AnalyticsCharts } from '@/components/analytics-charts'
 import { BudgetTracker } from '@/components/budget-tracker'
 import { SavingsGoals } from '@/components/savings-goals'
 import { WeeklySummary } from '@/components/weekly-summary'
 import { CategoryInsights } from '@/components/category-insights'
-import { ExpenseFilters, type FilterState } from '@/components/expense-filters'
 import { PushNotificationManager } from '@/components/push-notification-manager'
+import { SearchBar } from '@/components/search-bar'
+import { AnimatedCounter } from '@/components/animated-counter'
+import { FloatingActionMenu } from '@/components/floating-action-menu'
+import { NetworkStatus } from '@/components/network-status'
+import { Onboarding } from '@/components/onboarding'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, hapticFeedback } from '@/lib/utils'
 import { exportToCSV } from '@/lib/export'
+import { celebrateSuccess, celebrateMilestone, celebrateGoalComplete } from '@/components/confetti'
 import {
   Wallet,
   TrendingDown,
@@ -38,6 +44,8 @@ const QUICK_FILTERS = [
 
 const CATEGORY_FILTERS = ['All', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Other']
 
+const VIEW_ORDER: Array<'expenses' | 'analytics' | 'budget' | 'insights'> = ['expenses', 'analytics', 'budget', 'insights']
+
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
@@ -53,6 +61,9 @@ export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [deletedExpense, setDeletedExpense] = useState<{expense: Expense, index: number} | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [lastSynced, setLastSynced] = useState<Date | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const touchStart = useRef(0)
@@ -64,15 +75,25 @@ export default function Home() {
       const response = await fetch('/api/expenses')
       const data = await response.json()
       setExpenses(data.expenses || [])
-      applyFilters(data.expenses || [])
+      applyFilters(data.expenses || [], searchQuery)
     } catch (error) {
       console.error('Error fetching expenses:', error)
       toast.error('Failed to load expenses')
     }
   }
 
-  const applyFilters = (expenseList: Expense[]) => {
+  const applyFilters = (expenseList: Expense[], search: string = searchQuery) => {
     let filtered = [...expenseList]
+
+    // Search filter
+    if (search.trim()) {
+      const lowerSearch = search.toLowerCase()
+      filtered = filtered.filter((e) =>
+        e.merchant.toLowerCase().includes(lowerSearch) ||
+        e.category?.toLowerCase().includes(lowerSearch) ||
+        e.notes?.toLowerCase().includes(lowerSearch)
+      )
+    }
 
     // Category filter
     if (categoryFilter !== 'All') {
@@ -98,8 +119,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    applyFilters(expenses)
-  }, [quickFilter, categoryFilter])
+    applyFilters(expenses, searchQuery)
+  }, [quickFilter, categoryFilter, searchQuery])
 
   const fetchStats = async () => {
     try {
@@ -116,6 +137,12 @@ export default function Home() {
   useEffect(() => {
     fetchExpenses()
     fetchStats()
+
+    // Check if should show onboarding
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding')
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true)
+    }
   }, [])
 
   // Scroll detection for sticky header
@@ -240,6 +267,34 @@ export default function Home() {
     hapticFeedback('light')
   }
 
+  const handleUpdateNotes = async (expense: Expense) => {
+    try {
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: expense.amount,
+          merchant: expense.merchant,
+          category: expense.category,
+          notes: expense.notes,
+          transactionDate: expense.transaction_date,
+          cardNumber: expense.card_number,
+          cardholder: expense.cardholder,
+          transactionType: expense.transaction_type,
+          currency: expense.currency,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to update notes')
+
+      await fetchExpenses()
+      toast.success('Notes updated')
+    } catch (error) {
+      console.error('Error updating notes:', error)
+      toast.error('Failed to update notes')
+    }
+  }
+
   const handleSubmit = async (data: any) => {
     hapticFeedback('medium')
 
@@ -264,6 +319,7 @@ export default function Home() {
       setExpenses(prev => prev.map(e => e.id === editingExpense.id ? optimisticExpense : e))
     } else {
       setExpenses(prev => [optimisticExpense, ...prev])
+      celebrateSuccess() // Celebrate first expense
     }
     applyFilters(expenses)
 
@@ -326,8 +382,13 @@ export default function Home() {
       await fetchExpenses()
       await fetchStats()
 
+      setLastSynced(new Date())
       hapticFeedback('medium')
       toast.success(`Synced ${data.count || 0} new expenses`)
+
+      if (data.count > 0) {
+        celebrateSuccess()
+      }
     } catch (error) {
       console.error('Error syncing:', error)
       toast.error('Failed to sync emails')
@@ -366,6 +427,26 @@ export default function Home() {
     touchStart.current = 0
   }
 
+  // Gesture navigation - swipe between views
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      const currentIndex = VIEW_ORDER.indexOf(activeView as any)
+      if (currentIndex < VIEW_ORDER.length - 1) {
+        setActiveView(VIEW_ORDER[currentIndex + 1])
+        hapticFeedback('light')
+      }
+    },
+    onSwipedRight: () => {
+      const currentIndex = VIEW_ORDER.indexOf(activeView as any)
+      if (currentIndex > 0) {
+        setActiveView(VIEW_ORDER[currentIndex - 1])
+        hapticFeedback('light')
+      }
+    },
+    trackMouse: false,
+    trackTouch: true,
+  })
+
   const todayExpenses = expenses.filter((e) => {
     const today = new Date().toDateString()
     const expenseDate = new Date(e.transaction_date).toDateString()
@@ -377,10 +458,11 @@ export default function Home() {
   return (
     <div
       ref={contentRef}
-      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-24 overflow-auto"
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-32 overflow-auto"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      {...(activeView === 'expenses' ? {} : swipeHandlers)}
     >
       {/* Pull to refresh indicator */}
       <AnimatePresence>
@@ -404,27 +486,14 @@ export default function Home() {
           paddingBottom: scrolled ? '1rem' : '2.5rem',
         }}
         transition={{ duration: 0.3 }}
-        className="sticky top-0 z-40 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white p-4 pb-10 rounded-b-3xl shadow-lg"
+        className="sticky top-0 z-40 frosted-card p-4 pb-10 rounded-b-3xl shadow-lg"
       >
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <NavigationMenu
-              activeView={activeView}
-              onViewChange={setActiveView}
-              onExport={() => {
-                exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)
-                toast.success('Exported to CSV')
-                hapticFeedback('light')
-              }}
-              onSync={handleSync}
-              syncing={syncing}
-            />
-            <div>
-              <h1 className="text-2xl font-bold">Expenses</h1>
-              <p className="text-blue-100 dark:text-blue-200 text-xs">
-                {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : activeView === 'summary' ? 'Weekly report' : 'Spending patterns'}
-              </p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-high-contrast">Expenses</h1>
+            <p className="text-muted-foreground text-xs">
+              {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : activeView === 'summary' ? 'Weekly report' : 'Spending patterns'}
+            </p>
           </div>
         </div>
 
@@ -436,13 +505,13 @@ export default function Home() {
             marginTop: scrolled ? 0 : '1rem',
           }}
           transition={{ duration: 0.3 }}
-          className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 overflow-hidden"
+          className="glass rounded-2xl p-6 overflow-hidden"
         >
-          <p className="text-blue-100 text-sm mb-2">Today's Spending</p>
+          <p className="text-muted-foreground text-sm mb-2">Today's Spending</p>
           <p className="text-4xl font-bold">
-            {formatCurrency(todayTotal, 'VND')}
+            <AnimatedCounter value={todayTotal} prefix="₫ " duration={1200} />
           </p>
-          <p className="text-blue-100 text-sm mt-2">
+          <p className="text-muted-foreground text-sm mt-2">
             {todayExpenses.length} {todayExpenses.length === 1 ? 'expense' : 'expenses'}
           </p>
         </motion.div>
@@ -495,13 +564,21 @@ export default function Home() {
       <div className="px-4">
         {activeView === 'expenses' && (
           <>
+            {/* Search Bar */}
+            <div className="mb-4">
+              <SearchBar
+                expenses={expenses}
+                onSearch={(query) => setSearchQuery(query)}
+              />
+            </div>
+
             {/* Quick Filter Chips */}
             <div className="mb-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {QUICK_FILTERS.map((filter) => (
                 <Badge
                   key={filter.id}
                   variant={quickFilter === filter.id ? 'default' : 'outline'}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale"
                   onClick={() => {
                     setQuickFilter(filter.id)
                     hapticFeedback('light')
@@ -515,7 +592,7 @@ export default function Home() {
                 <Badge
                   key={cat}
                   variant={categoryFilter === cat ? 'default' : 'outline'}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale"
                   onClick={() => {
                     setCategoryFilter(cat)
                     hapticFeedback('light')
@@ -527,7 +604,7 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">
+              <h2 className="text-xl font-bold text-high-contrast">
                 {filteredExpenses.length === expenses.length
                   ? 'All Expenses'
                   : `${filteredExpenses.length} of ${expenses.length} expenses`}
@@ -537,7 +614,7 @@ export default function Home() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAllExpenses(!showAllExpenses)}
-                  className="gap-2"
+                  className="gap-2 ripple-effect"
                 >
                   <Calendar className="w-4 h-4" />
                   {showAllExpenses ? 'Show Less' : 'View All'}
@@ -560,19 +637,17 @@ export default function Home() {
               animate={{ opacity: 1 }}
               className="text-center py-16 px-4"
             >
-              <div className="w-20 h-20 mx-auto mb-4 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-                <Wallet className="w-10 h-10 text-muted-foreground" />
-              </div>
+              <div className="text-8xl mb-4">💸</div>
               <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
               <p className="text-muted-foreground text-sm mb-6">
                 Track your spending automatically or add manually
               </p>
               <div className="flex gap-3 justify-center">
-                <Button onClick={() => setShowForm(true)} className="gap-2">
+                <Button onClick={() => setShowForm(true)} className="gap-2 ripple-effect">
                   <Plus className="h-4 w-4" />
                   Add Expense
                 </Button>
-                <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2">
+                <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2 ripple-effect">
                   <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
                   Sync Emails
                 </Button>
@@ -580,13 +655,16 @@ export default function Home() {
             </motion.div>
           ) : filteredExpenses.length === 0 ? (
             <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
               <p className="text-muted-foreground mb-4">No expenses match your filters</p>
               <Button
                 variant="outline"
                 onClick={() => {
                   setQuickFilter('all')
                   setCategoryFilter('All')
+                  setSearchQuery('')
                 }}
+                className="ripple-effect"
               >
                 Clear Filters
               </Button>
@@ -595,11 +673,12 @@ export default function Home() {
             <div className="space-y-3">
               <AnimatePresence mode="popLayout">
                 {(showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, 10)).map((expense) => (
-                  <ExpenseCard
+                  <ExpandableExpenseCard
                     key={expense.id}
                     expense={expense}
                     onDelete={handleDelete}
                     onEdit={handleEdit}
+                    onUpdate={handleUpdateNotes}
                   />
                 ))}
               </AnimatePresence>
@@ -618,25 +697,29 @@ export default function Home() {
         ) : null}
       </div>
 
-      {/* Floating Add Button */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 20 }}
-        className="fixed bottom-8 right-6 z-50 sm:bottom-6"
-      >
-        <Button
-          size="lg"
-          onClick={() => {
-            setEditingExpense(undefined)
-            setShowForm(true)
-            hapticFeedback('light')
-          }}
-          className="h-16 w-16 sm:h-14 sm:w-14 rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110"
-        >
-          <Plus className="h-8 w-8 sm:h-7 sm:w-7" />
-        </Button>
-      </motion.div>
+      {/* Floating Action Menu */}
+      <FloatingActionMenu
+        onAddExpense={() => {
+          setEditingExpense(undefined)
+          setShowForm(true)
+        }}
+        onSyncEmails={handleSync}
+        onExport={() => {
+          exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)
+          toast.success('Exported to CSV')
+          hapticFeedback('light')
+        }}
+        syncing={syncing}
+      />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
+
+      {/* Network Status */}
+      <NetworkStatus syncing={syncing} lastSynced={lastSynced} />
 
       {/* Expense Form Modal */}
       <AnimatePresence>
@@ -654,6 +737,21 @@ export default function Home() {
 
       {/* Push Notification Manager */}
       <PushNotificationManager />
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <Onboarding
+          onComplete={() => setShowOnboarding(false)}
+          onAddExpense={() => {
+            setShowForm(true)
+            setShowOnboarding(false)
+          }}
+          onSyncEmails={() => {
+            handleSync()
+            setShowOnboarding(false)
+          }}
+        />
+      )}
     </div>
   )
 }
