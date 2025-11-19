@@ -458,7 +458,8 @@ export default function Home() {
   return (
     <div
       ref={contentRef}
-      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-32 overflow-auto"
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-36 overflow-auto overscroll-behavior-none"
+      style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -480,18 +481,18 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
+      {/* Header - iOS Safe Area Optimized */}
       <motion.div
         animate={{
-          paddingBottom: scrolled ? '1rem' : '2.5rem',
+          paddingBottom: scrolled ? '1.25rem' : '2rem',
         }}
         transition={{ duration: 0.3 }}
-        className="sticky top-0 z-40 frosted-card p-4 pb-10 rounded-b-3xl shadow-lg"
+        className="sticky top-0 z-40 frosted-card px-5 pt-safe-top pb-8 rounded-b-3xl shadow-lg"
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3 pt-4">
           <div>
-            <h1 className="text-2xl font-bold text-high-contrast">Expenses</h1>
-            <p className="text-muted-foreground text-xs">
+            <h1 className="text-3xl font-bold text-high-contrast">Expenses</h1>
+            <p className="text-muted-foreground text-sm mt-1">
               {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : activeView === 'summary' ? 'Weekly report' : 'Spending patterns'}
             </p>
           </div>
@@ -502,16 +503,16 @@ export default function Home() {
           animate={{
             opacity: scrolled ? 0 : 1,
             height: scrolled ? 0 : 'auto',
-            marginTop: scrolled ? 0 : '1rem',
+            marginTop: scrolled ? 0 : '1.25rem',
           }}
           transition={{ duration: 0.3 }}
           className="glass rounded-2xl p-6 overflow-hidden"
         >
-          <p className="text-muted-foreground text-sm mb-2">Today's Spending</p>
-          <p className="text-4xl font-bold">
+          <p className="text-muted-foreground text-sm mb-2.5">Today's Spending</p>
+          <p className="text-5xl font-bold leading-tight">
             <AnimatedCounter value={todayTotal} prefix="₫ " duration={1200} />
           </p>
-          <p className="text-muted-foreground text-sm mt-2">
+          <p className="text-muted-foreground text-base mt-3">
             {todayExpenses.length} {todayExpenses.length === 1 ? 'expense' : 'expenses'}
           </p>
         </motion.div>
@@ -519,14 +520,14 @@ export default function Home() {
 
       {/* Stats Cards */}
       {loading ? (
-        <div className="px-4 -mt-4 mb-6">
+        <div className="px-5 mt-6 mb-6">
           <div className="grid grid-cols-2 gap-3">
             <StatsCardSkeleton />
             <StatsCardSkeleton />
           </div>
         </div>
       ) : stats && (
-        <div className="px-4 -mt-4 mb-6">
+        <div className="px-5 mt-6 mb-6">
           <div className="grid grid-cols-2 gap-3">
             <StatsCard
               title="Total"
@@ -552,33 +553,33 @@ export default function Home() {
 
       {/* Sync Progress */}
       {syncing && syncProgress && (
-        <div className="px-4 mb-4">
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center gap-3">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-            <span className="text-sm text-blue-700 dark:text-blue-400">{syncProgress}</span>
+        <div className="px-5 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-base text-blue-700 dark:text-blue-400">{syncProgress}</span>
           </div>
         </div>
       )}
 
       {/* Content based on active view */}
-      <div className="px-4">
+      <div className="px-5">
         {activeView === 'expenses' && (
           <>
             {/* Search Bar */}
-            <div className="mb-4">
+            <div className="mb-5">
               <SearchBar
                 expenses={expenses}
                 onSearch={(query) => setSearchQuery(query)}
               />
             </div>
 
-            {/* Quick Filter Chips */}
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Quick Filter Chips - iOS optimized */}
+            <div className="mb-4 flex gap-2.5 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory -mx-5 px-5">
               {QUICK_FILTERS.map((filter) => (
                 <Badge
                   key={filter.id}
                   variant={quickFilter === filter.id ? 'default' : 'outline'}
-                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale"
+                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale min-h-[44px] px-5 py-2.5 text-base flex items-center snap-start"
                   onClick={() => {
                     setQuickFilter(filter.id)
                     hapticFeedback('light')
@@ -587,12 +588,15 @@ export default function Home() {
                   {filter.label}
                 </Badge>
               ))}
-              <div className="border-l border-border mx-2" />
+            </div>
+
+            {/* Category Filter Chips - iOS optimized */}
+            <div className="mb-5 flex gap-2.5 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory -mx-5 px-5">
               {CATEGORY_FILTERS.map((cat) => (
                 <Badge
                   key={cat}
                   variant={categoryFilter === cat ? 'default' : 'outline'}
-                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale"
+                  className="cursor-pointer whitespace-nowrap ripple-effect active-scale min-h-[44px] px-5 py-2.5 text-base flex items-center snap-start"
                   onClick={() => {
                     setCategoryFilter(cat)
                     hapticFeedback('light')
@@ -603,21 +607,24 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-high-contrast">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-high-contrast">
                 {filteredExpenses.length === expenses.length
                   ? 'All Expenses'
-                  : `${filteredExpenses.length} of ${expenses.length} expenses`}
+                  : `${filteredExpenses.length} of ${expenses.length}`}
               </h2>
               {filteredExpenses.length > 10 && (
                 <Button
                   variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAllExpenses(!showAllExpenses)}
-                  className="gap-2 ripple-effect"
+                  size="default"
+                  onClick={() => {
+                    setShowAllExpenses(!showAllExpenses)
+                    hapticFeedback('light')
+                  }}
+                  className="gap-2 ripple-effect min-h-[44px] px-4"
                 >
                   <Calendar className="w-4 h-4" />
-                  {showAllExpenses ? 'Show Less' : 'View All'}
+                  {showAllExpenses ? 'Less' : 'All'}
                 </Button>
               )}
             </div>
@@ -639,38 +646,40 @@ export default function Home() {
             >
               <div className="text-8xl mb-4">💸</div>
               <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
-              <p className="text-muted-foreground text-sm mb-6">
+              <p className="text-muted-foreground text-sm mb-8">
                 Track your spending automatically or add manually
               </p>
-              <div className="flex gap-3 justify-center">
-                <Button onClick={() => setShowForm(true)} className="gap-2 ripple-effect">
-                  <Plus className="h-4 w-4" />
+              <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
+                <Button onClick={() => setShowForm(true)} size="lg" className="gap-2 ripple-effect min-h-[52px] text-base">
+                  <Plus className="h-5 w-5" />
                   Add Expense
                 </Button>
-                <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2 ripple-effect">
-                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                <Button variant="outline" onClick={handleSync} disabled={syncing} size="lg" className="gap-2 ripple-effect min-h-[52px] text-base">
+                  <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
                   Sync Emails
                 </Button>
               </div>
             </motion.div>
           ) : filteredExpenses.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 px-4">
               <div className="text-6xl mb-4">🔍</div>
-              <p className="text-muted-foreground mb-4">No expenses match your filters</p>
+              <p className="text-muted-foreground mb-6">No expenses match your filters</p>
               <Button
                 variant="outline"
+                size="lg"
                 onClick={() => {
                   setQuickFilter('all')
                   setCategoryFilter('All')
                   setSearchQuery('')
+                  hapticFeedback('light')
                 }}
-                className="ripple-effect"
+                className="ripple-effect min-h-[48px] text-base"
               >
                 Clear Filters
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <AnimatePresence mode="popLayout">
                 {(showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, 10)).map((expense) => (
                   <ExpandableExpenseCard
