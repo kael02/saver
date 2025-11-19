@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion'
+import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence, useAnimate } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,30 +33,46 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(expense.notes || '')
   const x = useMotionValue(0)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const [scope, animate] = useAnimate()
 
   const backgroundColor = useTransform(
     x,
-    [-100, 0, 100],
-    ['rgba(239, 68, 68, 0.1)', 'rgba(0, 0, 0, 0)', 'rgba(59, 130, 246, 0.1)']
+    [-80, 0, 80],
+    ['rgba(239, 68, 68, 0.15)', 'rgba(0, 0, 0, 0)', 'rgba(59, 130, 246, 0.15)']
   )
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = 80
+  const handleDragEnd = async (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = 70
+    const velocity = info.velocity.x
 
     if (info.offset.x < -threshold && onDelete) {
       setIsRevealed('left')
-      x.set(-80)
       hapticFeedback('medium')
+      await animate(x, -80, {
+        type: 'spring',
+        damping: 25,
+        stiffness: 400,
+        velocity: velocity,
+      })
     } else if (info.offset.x > threshold && onEdit) {
       setIsRevealed('right')
-      x.set(80)
       hapticFeedback('medium')
+      await animate(x, 80, {
+        type: 'spring',
+        damping: 25,
+        stiffness: 400,
+        velocity: velocity,
+      })
     } else {
       setIsRevealed(null)
-      x.set(0)
+      await animate(x, 0, {
+        type: 'spring',
+        damping: 30,
+        stiffness: 400,
+        velocity: velocity,
+      })
     }
   }
 
@@ -72,6 +88,15 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
       hapticFeedback('light')
       onEdit(expense)
     }
+  }
+
+  const resetSwipe = async () => {
+    setIsRevealed(null)
+    await animate(x, 0, {
+      type: 'spring',
+      damping: 30,
+      stiffness: 400,
+    })
   }
 
   const handleCardClick = () => {
@@ -125,11 +150,17 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
 
       {/* Card */}
       <motion.div
-        ref={cardRef}
+        ref={scope}
         layout
         drag="x"
-        dragConstraints={{ left: -80, right: 80 }}
-        dragElastic={0.1}
+        dragConstraints={{ left: -100, right: 100 }}
+        dragElastic={{ left: 0.15, right: 0.15 }}
+        dragMomentum={false}
+        dragTransition={{
+          bounceStiffness: 400,
+          bounceDamping: 30,
+          power: 0.2,
+        }}
         onDragEnd={handleDragEnd}
         style={{ x, backgroundColor }}
         initial={{ opacity: 0, y: 20 }}
