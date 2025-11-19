@@ -104,32 +104,48 @@ export class EmailParser {
       // Strip HTML if present
       const cleanBody = this.stripHtml(body)
 
+      console.log('Grab email body preview (first 1000 chars):', cleanBody.substring(0, 1000))
+
       // Skip pending/scheduled orders silently
-      if (cleanBody.match(/Total pending|Order for Later|We've got your Order for Later/i)) {
+      if (cleanBody.match(/Total pending|Order for Later|We've got your Order for Later|Đơn hàng đang chờ xử lý/i)) {
+        console.log('Skipping pending/scheduled order')
         return null
       }
 
-      // Extract total amount (Vietnamese: Tổng giá OR Tổng cộng OR BẠN TRẢ)
-      // Support both formats: "₫ 88000" and "24400₫"
-      let amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|BẠN TRẢ|Total)\s*[<>]*\s*(?:₫\s*)?([\d,\.]+)\s*₫/i)
+      // Extract total amount - try multiple patterns
+      let amountMatch = null
+      let amount = 0
 
-      // Fallback to format with ₫ before amount
+      // Pattern 1: "Tổng cộng ₫38,000" or "Total ₫38000"
+      amountMatch = cleanBody.match(/(?:Tổng cộng|Tổng giá|BẠN TRẢ|Total|Grand Total)\s*[:\-]?\s*₫\s*([\d,\.]+)/i)
+
+      // Pattern 2: "38000₫" or "38,000₫"
       if (!amountMatch) {
-        amountMatch = cleanBody.match(/(?:Tổng giá|Tổng cộng|BẠN TRẢ|Total)\s*[<>]*\s*₫\s*([\d,\.]+)/i)
+        amountMatch = cleanBody.match(/(?:Tổng cộng|Tổng giá|BẠN TRẢ|Total|Grand Total)\s*[:\-]?\s*([\d,\.]+)\s*₫/i)
+      }
+
+      // Pattern 3: Just find "₫ followed by numbers" as last resort
+      if (!amountMatch) {
+        amountMatch = cleanBody.match(/₫\s*([\d,\.]+)/i)
       }
 
       if (!amountMatch) {
+        console.error('Could not extract amount from Grab email')
         return null
       }
 
-      const amount = parseFloat(amountMatch[1].replace(/,/g, '').replace(/\./g, ''))
+      // Clean and parse amount - remove commas and dots (Vietnamese number format)
+      amount = parseFloat(amountMatch[1].replace(/,/g, '').replace(/\./g, ''))
+      console.log('Extracted amount:', amount)
+
       const currency = 'VND'
 
-      // Extract delivery/completion time (Vietnamese: Giao đến lúc OR Ngày | Giờ)
-      // Format: "01 Oct 22 07:44 +0700" or "Giao đến lúc 01 Oct 22 07:44" or "Ngày | Giờ 08 Nov 25 18:38"
-      const dateMatch = cleanBody.match(/(?:Giao đến lúc|Delivered at|Completed at|Ngày\s*\|\s*Giờ)\s*[<>]*\s*(\d{2})\s+(\w{3})\s+(\d{2})\s+(\d{2}):(\d{2})/i)
+      // Extract date - try multiple patterns
+      let transactionDate: Date | null = null
 
-      let transactionDate: Date
+      // Pattern 1: "08 Nov 25 18:38" format
+      let dateMatch = cleanBody.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2})\s+(\d{2}):(\d{2})/i)
+
       if (dateMatch) {
         const [, day, monthStr, year, hour, minute] = dateMatch
         const monthMap: { [key: string]: string } = {
@@ -137,37 +153,76 @@ export class EmailParser {
           'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
           'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
         }
-        const month = monthMap[monthStr] || '01'
+        const month = monthMap[monthStr.substring(0, 3)] || '01'
         const fullYear = `20${year}`
-        transactionDate = new Date(`${fullYear}-${month}-${day.padStart(2, '0')}T${hour}:${minute}:00`)
-      } else {
-        // Default to now if can't parse date
+        transactionDate = new Date(`${fullYear}-${month}-${day.padStart(2, '0')}T${hour}:${minute}:00+07:00`)
+        console.log('Extracted date (pattern 1):', transactionDate.toISOString())
+      }
+
+      // Pattern 2: Vietnamese date format "18:38 08/11/2025" or "08/11/2025 18:38"
+      if (!transactionDate) {
+        dateMatch = cleanBody.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{2}):(\d{2})/i)
+        if (dateMatch) {
+          const [, day, month, year, hour, minute] = dateMatch
+          transactionDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour}:${minute}:00+07:00`)
+          console.log('Extracted date (pattern 2):', transactionDate.toISOString())
+        }
+      }
+
+      // Pattern 3: Time before date "18:38 08/11/2025"
+      if (!transactionDate) {
+        dateMatch = cleanBody.match(/(\d{2}):(\d{2})\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i)
+        if (dateMatch) {
+          const [, hour, minute, day, month, year] = dateMatch
+          transactionDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour}:${minute}:00+07:00`)
+          console.log('Extracted date (pattern 3):', transactionDate.toISOString())
+        }
+      }
+
+      // If still no date found, use current time
+      if (!transactionDate) {
         console.warn('Could not extract date from Grab email, using current time')
+        console.log('Searched in body:', cleanBody.substring(0, 500))
         transactionDate = new Date()
       }
 
-      // Extract merchant/store name (Vietnamese: Đặt từ)
-      const merchantMatch = cleanBody.match(/(?:Đặt từ|Ordered from|From)\s*[<>]*\s*([^\n]+?)(?:\s*Giao đến|Delivered to|Được giao|$)/i)
+      // Extract merchant/store name - try multiple patterns
       let merchant = 'Grab'
-      if (merchantMatch) {
-        merchant = merchantMatch[1].trim() || 'Grab'
+
+      // Pattern 1: "Đặt từ STORE_NAME" or "From STORE_NAME"
+      let merchantMatch = cleanBody.match(/(?:Đặt từ|Ordered from|From)\s+([^\n\r]{3,80}?)(?:\s+(?:Giao đến|Delivered to|Được giao|Ngày|Date|₫)|$)/i)
+
+      // Pattern 2: Look for merchant before the amount
+      if (!merchantMatch) {
+        merchantMatch = cleanBody.match(/([A-Z][^\n\r₫]{5,60}?)\s+(?:Tổng cộng|Total|₫)/i)
       }
 
+      if (merchantMatch) {
+        merchant = merchantMatch[1].trim()
+        // Clean up merchant name - remove common noise
+        merchant = merchant.replace(/\s*Xem chi tiết.*/i, '')
+        merchant = merchant.replace(/\s*View details.*/i, '')
+        merchant = merchant.replace(/\s*\d+\s*₫.*/, '')
+        merchant = merchant.trim()
+      }
+
+      console.log('Extracted merchant:', merchant)
+
       // Extract order code if available
-      const orderCodeMatch = cleanBody.match(/(?:Mã đơn hàng|Order code)\s*[<>]*\s*([A-Z0-9\-]+)/i)
+      const orderCodeMatch = cleanBody.match(/(?:Mã đơn hàng|Order code|Order)\s*[:\-]?\s*([A-Z0-9\-]+)/i)
       const orderCode = orderCodeMatch ? orderCodeMatch[1].trim() : ''
 
       // Determine transaction type based on content
       let transactionType = 'Grab'
-      if (cleanBody.toLowerCase().includes('grabfood')) {
+      if (cleanBody.toLowerCase().includes('grabfood') || cleanBody.toLowerCase().includes('food')) {
         transactionType = 'GrabFood'
-      } else if (cleanBody.toLowerCase().includes('grabmart') || cleanBody.toLowerCase().includes('7-eleven')) {
+      } else if (cleanBody.toLowerCase().includes('grabmart') || cleanBody.toLowerCase().includes('mart') || cleanBody.toLowerCase().includes('7-eleven')) {
         transactionType = 'GrabMart'
-      } else if (cleanBody.toLowerCase().includes('grabcar') || cleanBody.toLowerCase().includes('grabike')) {
+      } else if (cleanBody.toLowerCase().includes('grabcar') || cleanBody.toLowerCase().includes('grabike') || cleanBody.toLowerCase().includes('ride')) {
         transactionType = 'GrabCar/Bike'
       }
 
-      console.log('Parsed Grab values:', { amount, currency, merchant, transactionType, orderCode })
+      console.log('Parsed Grab values:', { amount, currency, merchant, transactionType, orderCode, date: transactionDate.toISOString() })
 
       return {
         cardNumber: orderCode || 'Grab',
