@@ -43,11 +43,19 @@ export class EmailService {
           }
 
           // Search for unread emails from trusted senders only
-          // IMAP OR condition: search for emails from any trusted sender
+          // Only emails from the last 30 days
+          const thirtyDaysAgo = new Date()
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+          const sinceDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '-')
+
+          // IMAP search criteria: UNSEEN, from trusted senders, since 30 days ago
           const searchCriteria = [
             'UNSEEN',
+            ['SINCE', sinceDate],
             ['OR', ...TRUSTED_SENDERS.map(sender => ['FROM', sender])]
           ]
+
+          console.log(`Searching for emails since: ${sinceDate}`)
 
           imap.search(searchCriteria, (err, results) => {
             if (err) {
@@ -89,21 +97,13 @@ export class EmailService {
                   const subject = parsed.subject || ''
                   const body = parsed.text || parsed.html || ''
 
-                  // Debug logging
-                  console.log('=== EMAIL DEBUG ===')
-                  console.log('Subject:', subject)
-                  console.log('Body preview:', body.substring(0, 500))
-                  console.log('===================')
-
                   // Try to parse the email
                   const expense = emailParser.parseEmail(subject, body)
                   if (expense) {
                     console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
                     expenses.push(expense)
-                  } else {
-                    console.log('✗ Could not parse expense data')
-                    console.log('Full body for debugging:', body)
                   }
+                  // Silently skip emails that don't parse (pending orders, confirmations, etc.)
                 })
               })
             })
