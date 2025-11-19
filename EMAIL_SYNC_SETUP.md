@@ -1,43 +1,18 @@
 # Email Sync Setup Guide
 
-## Problem: Email-synced expenses not showing up?
+## How It Works
 
-If you're successfully parsing emails but they don't appear in your expense list, it's likely because they're not associated with your user account.
+Email-synced expenses are automatically associated with the **logged-in user** who triggers the sync. No manual configuration needed!
 
-## Solution: Configure Email Sync User ID
+When you click "Sync Emails" in the app:
+1. The system checks your login session
+2. Gets your user ID automatically
+3. Associates all parsed expenses with your account
+4. Expenses appear in your expense list immediately
 
-Email-synced expenses need to be associated with a user ID so they appear in your expense list.
+## Setup Steps
 
-### Step 1: Get Your User ID
-
-#### Option A: From Supabase Dashboard (Easiest)
-
-1. Go to your **Supabase Dashboard**
-2. Navigate to **Authentication** → **Users**
-3. Find your user account
-4. Copy the **ID** (UUID format like: `a1b2c3d4-1234-5678-90ab-cdef12345678`)
-
-#### Option B: Using SQL Query
-
-In Supabase SQL Editor, run:
-
-```sql
-SELECT id, email FROM auth.users;
-```
-
-Copy the `id` for your email address.
-
-### Step 2: Add to Environment Variables
-
-Add to your `.env` file:
-
-```bash
-EMAIL_SYNC_USER_ID=a1b2c3d4-1234-5678-90ab-cdef12345678
-```
-
-Replace with your actual user ID from Step 1.
-
-### Step 3: Apply Database Migration
+### Step 1: Apply Database Migration
 
 If you haven't already, apply the duplicate detection migration:
 
@@ -51,57 +26,62 @@ WHERE source = 'email';
 
 This prevents duplicate email imports per user.
 
-### Step 4: Fix Existing Expenses (Optional)
+### Step 2: Fix Existing Expenses (Optional)
 
-If you already have email-synced expenses with `NULL` user_id, update them:
+If you already have email-synced expenses with `NULL` user_id, update them to your user ID:
 
 ```sql
+-- First, find your user ID
+SELECT id, email FROM auth.users;
+
 -- Preview what will be updated
 SELECT id, merchant, amount, transaction_date, user_id
 FROM expenses
 WHERE source = 'email' AND user_id IS NULL;
 
--- Update to your user ID (replace YOUR_USER_ID)
+-- Update to your user ID (replace YOUR_USER_ID with the ID from the first query)
 UPDATE expenses
-SET user_id = 'a1b2c3d4-1234-5678-90ab-cdef12345678'
+SET user_id = 'YOUR_USER_ID_HERE'
 WHERE source = 'email' AND user_id IS NULL;
 ```
 
-### Step 5: Test
+### Step 3: Test
 
 1. Mark a Grab or VIB email as **unread**
-2. Trigger **email sync** in the app
-3. Check the logs:
+2. **Log in** to the app (must be authenticated)
+3. Trigger **email sync** in the app
+4. Check the logs:
    ```
-   Associating expenses with user: a1b2c3d4-...
+   Associating expenses with user: a1b2c3d4-... (your-email@example.com)
    ✓ Successfully inserted expense with ID: ...
    ```
-4. **Refresh the app** - expenses should now appear!
+5. **Refresh the app** - expenses should now appear!
 
 ## Verification Checklist
 
 After setup, verify these in order:
 
-- [ ] `EMAIL_SYNC_USER_ID` is set in `.env`
-- [ ] User ID exists in `auth.users` table
+- [ ] You are **logged in** to the app
 - [ ] Database migration applied (unique index exists)
-- [ ] Sync logs show: `Associating expenses with user: ...`
+- [ ] Sync logs show: `Associating expenses with user: ... (your-email@...)`
 - [ ] Expenses inserted successfully (no RLS errors)
 - [ ] Expenses appear in the app UI
 
 ## Troubleshooting
 
-### Error: "Email sync user ID not configured"
+### Error: "Unauthorized. Please log in to sync emails."
 
-**Problem:** `EMAIL_SYNC_USER_ID` not set in `.env`
+**Problem:** Not logged in or session expired
 
-**Solution:** Add it to `.env` and restart the server
+**Solution:** Log in to the app and try syncing again
 
 ### Expenses still not showing
 
-**Problem:** User ID doesn't match the logged-in user
+**Problem:** Database migration not applied or old expenses have NULL user_id
 
-**Solution:** Make sure the `EMAIL_SYNC_USER_ID` matches the user you're logged in as
+**Solution:**
+1. Apply the migration (Step 1)
+2. Update old expenses to your user ID (Step 2)
 
 ### RLS Policy Error
 
@@ -115,22 +95,19 @@ After setup, verify these in order:
 
 **Solution:** This is expected! The duplicate detection is working. Old expenses with `NULL` user_id are different from new ones with user_id set.
 
-## Multi-User Setup (Future)
+## Multi-User Support
 
-Currently, all email-synced expenses go to one user. For multi-user setups:
+✅ **Already supported!** Each user syncs emails to their own account automatically.
 
-**Option 1:** Different email accounts per user
-- Configure `EMAIL_USER` and `EMAIL_SYNC_USER_ID` per deployment
-- Each user runs their own instance
+How it works:
+1. User A logs in and syncs → expenses go to User A
+2. User B logs in and syncs → expenses go to User B
+3. Each user only sees their own expenses (RLS policy enforcement)
 
-**Option 2:** Email-to-user mapping
-- Add a mapping table: `email_address` → `user_id`
-- Update sync code to look up user by email account
-
-**Option 3:** User authenticates before sync
-- Make sync endpoint require authentication
-- Use authenticated user's ID instead of env variable
-- Each user syncs their own email account
+**Note:** The email configuration (`EMAIL_USER`, `EMAIL_PASSWORD`) is currently shared across all users. For true per-user email sync, you would need to:
+- Store email credentials per user in the database (encrypted)
+- Allow users to configure their own email accounts in settings
+- Fetch credentials based on the logged-in user
 
 ## Environment Variable Reference
 
@@ -138,12 +115,11 @@ Currently, all email-synced expenses go to one user. For multi-user setups:
 # Required for email sync
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
-EMAIL_SYNC_USER_ID=your-user-id-here
 
-# Required for database access
+# Required for database access (backend operations)
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Optional: AI parsing
+# Optional: AI parsing (recommended for better accuracy)
 OPENROUTER_API_KEY=your-openrouter-key
 ```
 
