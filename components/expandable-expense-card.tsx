@@ -41,8 +41,6 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(expense.notes || '')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isLongPressing, setIsLongPressing] = useState(false)
-  const longPressTimer = useState<NodeJS.Timeout | null>(null)[0]
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
 
@@ -79,36 +77,14 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
     hapticFeedback('medium')
   }
 
-  const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const timer = setTimeout(() => {
-      setIsLongPressing(true)
-      hapticFeedback('heavy')
-      setShowDeleteDialog(true)
-    }, 500)
-    // @ts-ignore
-    longPressTimer.current = timer
-  }
-
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-    }
-    setIsLongPressing(false)
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0, scale: isLongPressing ? 0.97 : 1 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} hover:shadow-md transition-all cursor-pointer`}
+      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]`}
       onClick={handleCardClick}
-      onTouchStart={handleLongPressStart}
-      onTouchEnd={handleLongPressEnd}
-      onMouseDown={handleLongPressStart}
-      onMouseUp={handleLongPressEnd}
-      onMouseLeave={handleLongPressEnd}
     >
         <div className="flex items-start justify-between mb-3 gap-2">
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
