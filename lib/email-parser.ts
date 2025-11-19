@@ -24,6 +24,139 @@ export class EmailParser {
   }
 
   /**
+   * Parse email using OpenRouter AI (more reliable than regex)
+   */
+  private async parseWithAI(subject: string, body: string): Promise<ParsedExpense | null> {
+    const apiKey = process.env.OPENROUTER_API_KEY
+
+    if (!apiKey) {
+      console.log('OpenRouter API key not configured, falling back to regex parsing')
+      return null
+    }
+
+    try {
+      const cleanBody = this.stripHtml(body)
+
+      // Truncate to avoid token limits (keep first 2000 chars which should contain transaction details)
+      const truncatedBody = cleanBody.substring(0, 2000)
+
+      const prompt = `You are an email parser that extracts transaction information from emails.
+Parse the following email and extract the transaction details in JSON format.
+
+Email Subject: ${subject}
+Email Body: ${truncatedBody}
+
+Extract the following information:
+- amount (number, no currency symbols or commas)
+- currency (e.g., "VND", "USD")
+- merchant (store/restaurant/service name)
+- transactionDate (ISO 8601 format like "2025-11-19T10:30:00+07:00")
+- transactionType (e.g., "GrabFood", "GrabCar", "Shopping", "Food", etc.)
+- orderCode (if available, otherwise empty string)
+
+IMPORTANT RULES:
+1. For the amount, extract ONLY the final total amount paid by the customer, not subtotals or individual items
+2. For Vietnamese dates like "08/11/2025 18:38" or "08 Nov 25 18:38", convert to ISO 8601 format with +07:00 timezone
+3. If you cannot find a specific field, use reasonable defaults:
+   - merchant: "Unknown" if not found
+   - transactionType: "Purchase" if not specific
+   - orderCode: "" if not found
+4. Remove all formatting from amount (no commas, dots, or currency symbols)
+5. For Grab emails, look for "Đặt từ" or "From" to find the merchant name
+6. Skip pending orders or order confirmations - only parse completed transactions
+
+Return ONLY valid JSON in this exact format (no markdown, no explanations):
+{
+  "amount": 38000,
+  "currency": "VND",
+  "merchant": "Store Name",
+  "transactionDate": "2025-11-19T18:38:00+07:00",
+  "transactionType": "GrabFood",
+  "orderCode": "A-8KC6JRDWWP26AV"
+}
+
+If this email is NOT a completed transaction (e.g., pending order, confirmation email, promotional email), return:
+{"skip": true}`
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'Expense Tracker Email Parser',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-exp:free', // Fast and free model
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.1, // Low temperature for consistent parsing
+          max_tokens: 500,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('OpenRouter API error:', response.status, errorText)
+        return null
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content?.trim()
+
+      if (!content) {
+        console.error('No content in OpenRouter response')
+        return null
+      }
+
+      // Parse JSON response
+      let parsed
+      try {
+        // Remove markdown code blocks if present
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, content]
+        const jsonStr = jsonMatch[1] || content
+        parsed = JSON.parse(jsonStr.trim())
+      } catch (e) {
+        console.error('Failed to parse AI response as JSON:', content)
+        return null
+      }
+
+      // Check if email should be skipped
+      if (parsed.skip) {
+        console.log('AI detected this should be skipped (pending order or non-transaction email)')
+        return null
+      }
+
+      // Validate required fields
+      if (!parsed.amount || !parsed.merchant) {
+        console.error('Missing required fields in AI response:', parsed)
+        return null
+      }
+
+      console.log('✓ AI parsed expense:', parsed)
+
+      return {
+        cardNumber: parsed.orderCode || 'Email',
+        cardholder: 'Email User',
+        transactionType: parsed.transactionType || 'Purchase',
+        amount: parseFloat(parsed.amount),
+        currency: parsed.currency || 'VND',
+        transactionDate: parsed.transactionDate,
+        merchant: parsed.merchant,
+        source: 'email',
+        emailSubject: subject,
+      }
+    } catch (error) {
+      console.error('Error in AI parsing:', error)
+      return null
+    }
+  }
+
+  /**
    * Parse VIB (Vietnam International Bank) transaction notification email
    * Supports both English and Vietnamese formats
    */
@@ -242,19 +375,31 @@ export class EmailParser {
   }
 
   /**
-   * Main parser function - detects service and routes to appropriate parser
+   * Main parser function - uses AI first, falls back to regex
    */
-  parseEmail(subject: string, body: string): ParsedExpense | null {
+  async parseEmail(subject: string, body: string): Promise<ParsedExpense | null> {
     const subjectLower = subject.toLowerCase()
     const bodyLower = body.toLowerCase()
 
+    console.log('Attempting to parse email with AI...')
+
+    // Try AI parsing first (more reliable)
+    const aiResult = await this.parseWithAI(subject, body)
+    if (aiResult) {
+      console.log('✓ Successfully parsed with AI')
+      return aiResult
+    }
+
+    console.log('AI parsing failed or not configured, falling back to regex...')
+
+    // Fall back to regex-based parsing
     // Check for Grab email
     if (
       subjectLower.includes('grab') ||
       bodyLower.includes('grab') ||
       bodyLower.includes('no-reply@grab.com')
     ) {
-      console.log('Detected Grab email format, attempting to parse...')
+      console.log('Detected Grab email format, attempting regex parse...')
       return this.parseGrabEmail(subject, body)
     }
 
@@ -266,7 +411,7 @@ export class EmailParser {
       bodyLower.includes('card.vib.com.vn') ||
       bodyLower.includes('card number:') // Common in transaction emails
     ) {
-      console.log('Detected VIB email format, attempting to parse...')
+      console.log('Detected VIB email format, attempting regex parse...')
       return this.parseVIBEmail(subject, body)
     }
 

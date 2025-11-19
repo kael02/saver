@@ -97,13 +97,17 @@ export class EmailService {
                   const subject = parsed.subject || ''
                   const body = parsed.text || parsed.html || ''
 
-                  // Try to parse the email
-                  const expense = emailParser.parseEmail(subject, body)
-                  if (expense) {
-                    console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
-                    expenses.push(expense)
+                  // Try to parse the email (now async)
+                  try {
+                    const expense = await emailParser.parseEmail(subject, body)
+                    if (expense) {
+                      console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
+                      expenses.push(expense)
+                    }
+                    // Silently skip emails that don't parse (pending orders, confirmations, etc.)
+                  } catch (parseError) {
+                    console.error('Error parsing email:', parseError)
                   }
-                  // Silently skip emails that don't parse (pending orders, confirmations, etc.)
                 })
               })
             })
