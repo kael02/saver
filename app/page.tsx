@@ -74,7 +74,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [lastSynced, setLastSynced] = useState<Date | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showCategorySheet, setShowCategorySheet] = useState(false)
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const touchStart = useRef(0)
@@ -576,67 +576,102 @@ export default function Home() {
       <div className="px-5">
         {activeView === 'expenses' && (
           <>
-            {/* Search Bar */}
-            <div className="mb-5">
-              <SearchBar
-                expenses={expenses}
-                onSearch={(query) => setSearchQuery(query)}
-              />
-            </div>
-
-            {/* Filter Controls - iOS optimized */}
+            {/* Search and Filter Bar - iOS optimized */}
             <div className="mb-6 flex gap-3">
-              {/* Quick Filter Chips */}
-              <div className="flex gap-2.5 overflow-x-auto scrollbar-hide snap-x snap-mandatory flex-1">
-                {QUICK_FILTERS.map((filter) => (
-                  <Badge
-                    key={filter.id}
-                    variant={quickFilter === filter.id ? 'default' : 'outline'}
-                    className="cursor-pointer whitespace-nowrap ripple-effect active-scale min-h-[44px] px-5 py-2.5 text-base flex items-center snap-start"
-                    onClick={() => {
-                      setQuickFilter(filter.id)
-                      hapticFeedback('light')
-                    }}
-                  >
-                    {filter.label}
-                  </Badge>
-                ))}
+              <div className="flex-1">
+                <SearchBar
+                  expenses={expenses}
+                  onSearch={(query) => setSearchQuery(query)}
+                />
               </div>
 
-              {/* Category Filter Button */}
-              <Sheet open={showCategorySheet} onOpenChange={setShowCategorySheet}>
+              {/* Filter Button */}
+              <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
                 <SheetTrigger asChild>
                   <Button
-                    variant={categoryFilter === 'All' ? 'outline' : 'default'}
-                    className="ripple-effect min-h-[44px] gap-2 whitespace-nowrap"
+                    variant={(quickFilter !== 'all' || categoryFilter !== 'All') ? 'default' : 'outline'}
+                    className="ripple-effect min-h-[48px] gap-2 whitespace-nowrap px-4"
                     onClick={() => hapticFeedback('light')}
                   >
-                    <Filter className="h-4 w-4" />
-                    {categoryFilter}
-                    <ChevronDown className="h-4 w-4" />
+                    <Filter className="h-5 w-5" />
+                    {(quickFilter !== 'all' || categoryFilter !== 'All') && (
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                    )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-3xl">
-                  <SheetHeader>
-                    <SheetTitle>Filter by Category</SheetTitle>
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh]">
+                  <SheetHeader className="mb-6">
+                    <SheetTitle>Filter Expenses</SheetTitle>
                   </SheetHeader>
-                  <div className="grid gap-2 py-6">
-                    {CATEGORY_FILTERS.map((cat) => (
-                      <Button
-                        key={cat}
-                        variant={categoryFilter === cat ? 'default' : 'outline'}
-                        size="lg"
-                        className="justify-between min-h-[56px] text-base"
-                        onClick={() => {
-                          setCategoryFilter(cat)
-                          hapticFeedback('medium')
-                          setShowCategorySheet(false)
-                        }}
-                      >
-                        {cat}
-                        {categoryFilter === cat && <Check className="h-5 w-5" />}
-                      </Button>
-                    ))}
+
+                  {/* Time Range Section */}
+                  <div className="mb-8">
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Time Range</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {QUICK_FILTERS.map((filter) => (
+                        <Button
+                          key={filter.id}
+                          variant={quickFilter === filter.id ? 'default' : 'outline'}
+                          size="lg"
+                          className="min-h-[56px] text-base"
+                          onClick={() => {
+                            setQuickFilter(filter.id)
+                            hapticFeedback('medium')
+                          }}
+                        >
+                          {quickFilter === filter.id && <Check className="h-5 w-5 mr-2" />}
+                          {filter.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Category Section */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Category</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CATEGORY_FILTERS.map((cat) => (
+                        <Button
+                          key={cat}
+                          variant={categoryFilter === cat ? 'default' : 'outline'}
+                          size="lg"
+                          className="min-h-[56px] text-base"
+                          onClick={() => {
+                            setCategoryFilter(cat)
+                            hapticFeedback('medium')
+                          }}
+                        >
+                          {categoryFilter === cat && <Check className="h-5 w-5 mr-2" />}
+                          {cat}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 min-h-[52px]"
+                      onClick={() => {
+                        setQuickFilter('all')
+                        setCategoryFilter('All')
+                        hapticFeedback('light')
+                      }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      size="lg"
+                      className="flex-1 min-h-[52px]"
+                      onClick={() => {
+                        setShowFilterSheet(false)
+                        hapticFeedback('medium')
+                      }}
+                    >
+                      Apply Filters
+                    </Button>
                   </div>
                 </SheetContent>
               </Sheet>

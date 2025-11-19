@@ -97,9 +97,9 @@ export function FloatingActionMenu({
                       size="lg"
                       onClick={action.onClick}
                       disabled={action.disabled}
-                      className={`h-14 w-14 rounded-full shadow-lg bg-gradient-to-br ${action.color} hover:scale-105 transition-transform`}
+                      className={`h-14 w-14 rounded-full shadow-lg bg-gradient-to-br ${action.color} hover:scale-105 transition-transform text-white`}
                     >
-                      <Icon className={`h-6 w-6 ${action.disabled && syncing ? 'animate-spin' : ''}`} />
+                      <Icon className={`h-6 w-6 text-white ${action.disabled && syncing ? 'animate-spin' : ''}`} />
                     </Button>
                   </motion.div>
                 )
@@ -117,9 +117,9 @@ export function FloatingActionMenu({
           <Button
             size="lg"
             onClick={toggleMenu}
-            className="h-16 w-16 sm:h-14 sm:w-14 rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110"
+            className="h-16 w-16 rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110 text-white"
           >
-            {isOpen ? <X className="h-8 w-8 sm:h-7 sm:w-7" /> : <Plus className="h-8 w-8 sm:h-7 sm:w-7" />}
+            {isOpen ? <X className="h-7 w-7 text-white" /> : <Plus className="h-7 w-7 text-white" />}
           </Button>
         </motion.div>
       </div>
