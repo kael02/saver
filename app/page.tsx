@@ -1,230 +1,265 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
-import { ExpandableExpenseCard } from '@/components/expandable-expense-card'
-import { StatsCard } from '@/components/stats-card'
-import { ExpenseCardSkeleton, StatsCardSkeleton, ChartSkeleton, BudgetCardSkeleton, InsightCardSkeleton } from '@/components/skeleton-loader'
-import { QuickExpenseForm } from '@/components/quick-expense-form'
-import { BottomNavigation } from '@/components/bottom-navigation'
-import { AnalyticsCharts } from '@/components/analytics-charts'
-import { BudgetTracker } from '@/components/budget-tracker'
-import { SavingsGoals } from '@/components/savings-goals'
-import { WeeklySummary } from '@/components/weekly-summary'
-import { CategoryInsights } from '@/components/category-insights'
-import { PushNotificationManager } from '@/components/push-notification-manager'
-import { SearchBar } from '@/components/search-bar'
-import { AnimatedCounter } from '@/components/animated-counter'
-import { FloatingActionMenu } from '@/components/floating-action-menu'
-import { NetworkStatus } from '@/components/network-status'
-import { Onboarding } from '@/components/onboarding'
-import { ProgressIndicator } from '@/components/progress-indicator'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { formatCurrency, hapticFeedback } from '@/lib/utils'
-import { exportToCSV } from '@/lib/export'
-import { celebrateSuccess, celebrateMilestone, celebrateGoalComplete } from '@/components/confetti'
+import { AnalyticsCharts } from '@/components/analytics-charts';
+import { AnimatedCounter } from '@/components/animated-counter';
+import { BottomNavigation } from '@/components/bottom-navigation';
+import { BudgetTracker } from '@/components/budget-tracker';
+import { CategoryInsights } from '@/components/category-insights';
+import { celebrateSuccess } from '@/components/confetti';
+import { ExpandableExpenseCard } from '@/components/expandable-expense-card';
+import { FloatingActionMenu } from '@/components/floating-action-menu';
+import { NetworkStatus } from '@/components/network-status';
+import { Onboarding } from '@/components/onboarding';
+import { ProgressIndicator } from '@/components/progress-indicator';
+import { PushNotificationManager } from '@/components/push-notification-manager';
+import { QuickExpenseForm } from '@/components/quick-expense-form';
+import { SavingsGoals } from '@/components/savings-goals';
+import { SearchBar } from '@/components/search-bar';
 import {
-  Wallet,
-  TrendingDown,
+  BudgetCardSkeleton,
+  ChartSkeleton,
+  ExpenseCardSkeleton,
+  InsightCardSkeleton,
+  StatsCardSkeleton,
+} from '@/components/skeleton-loader';
+import { StatsCard } from '@/components/stats-card';
+import { Button } from '@/components/ui/button';
+import { WeeklySummary } from '@/components/weekly-summary';
+import { exportToCSV } from '@/lib/export';
+import type { Expense } from '@/lib/supabase';
+import { formatCurrency, hapticFeedback } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
   Calendar,
+  Filter,
   Plus,
   RefreshCw,
-  Loader2,
-  Filter,
-  ChevronDown,
-  Check,
-} from 'lucide-react'
-import type { Expense } from '@/lib/supabase'
+  TrendingDown,
+  Wallet,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 const QUICK_FILTERS = [
   { id: 'all', label: 'All', dateRange: 'all' as const },
   { id: 'today', label: 'Today', dateRange: 'today' as const },
   { id: 'week', label: 'Week', dateRange: 'week' as const },
   { id: 'month', label: 'Month', dateRange: 'month' as const },
-]
+];
 
-const CATEGORY_FILTERS = ['All', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Other']
+const CATEGORY_FILTERS = [
+  'All',
+  'Food',
+  'Transport',
+  'Shopping',
+  'Entertainment',
+  'Bills',
+  'Health',
+  'Other',
+];
 
-const VIEW_ORDER: Array<'expenses' | 'analytics' | 'budget' | 'insights'> = ['expenses', 'analytics', 'budget', 'insights']
+const VIEW_ORDER: Array<'expenses' | 'analytics' | 'budget' | 'insights'> = [
+  'expenses',
+  'analytics',
+  'budget',
+  'insights',
+];
 
 export default function Home() {
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
-  const [stats, setStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editingExpense, setEditingExpense] = useState<Expense | undefined>()
-  const [syncing, setSyncing] = useState(false)
-  const [syncProgress, setSyncProgress] = useState<string>('')
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [syncDetail, setSyncDetail] = useState<string>('')
-  const [showAllExpenses, setShowAllExpenses] = useState(false)
-  const [activeView, setActiveView] = useState<'expenses' | 'analytics' | 'budget' | 'goals' | 'summary' | 'insights'>('expenses')
-  const [quickFilter, setQuickFilter] = useState<'all' | 'today' | 'week' | 'month'>('all')
-  const [categoryFilter, setCategoryFilter] = useState('All')
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [deletedExpense, setDeletedExpense] = useState<{expense: Expense, index: number} | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [lastSynced, setLastSynced] = useState<Date | null>(null)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showFilterSheet, setShowFilterSheet] = useState(false)
-  const [budgets, setBudgets] = useState<any[]>([])
-  const contentRef = useRef<HTMLDivElement>(null)
-  const [pullDistance, setPullDistance] = useState(0)
-  const touchStart = useRef(0)
-  const [scrolled, setScrolled] = useState(false)
-  const lastScrollY = useRef(0)
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | undefined>();
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string>('');
+  const [syncStatus, setSyncStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
+  const [syncDetail, setSyncDetail] = useState<string>('');
+  const [showAllExpenses, setShowAllExpenses] = useState(false);
+  const [activeView, setActiveView] = useState<
+    'expenses' | 'analytics' | 'budget' | 'goals' | 'summary' | 'insights'
+  >('expenses');
+  const [quickFilter, setQuickFilter] = useState<
+    'all' | 'today' | 'week' | 'month'
+  >('all');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deletedExpense, setDeletedExpense] = useState<{
+    expense: Expense;
+    index: number;
+  } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStart = useRef(0);
+  const [scrolled, setScrolled] = useState(false);
+  const lastScrollY = useRef(0);
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch('/api/expenses')
-      const data = await response.json()
-      setExpenses(data.expenses || [])
-      applyFilters(data.expenses || [], searchQuery)
+      const response = await fetch('/api/expenses');
+      const data = await response.json();
+      setExpenses(data.expenses || []);
+      applyFilters(data.expenses || [], searchQuery);
     } catch (error) {
-      console.error('Error fetching expenses:', error)
-      toast.error('Failed to load expenses')
+      console.error('Error fetching expenses:', error);
+      toast.error('Failed to load expenses');
     }
-  }
+  };
 
-  const applyFilters = (expenseList: Expense[], search: string = searchQuery) => {
-    let filtered = [...expenseList]
+  const applyFilters = (
+    expenseList: Expense[],
+    search: string = searchQuery
+  ) => {
+    let filtered = [...expenseList];
 
     // Search filter
     if (search.trim()) {
-      const lowerSearch = search.toLowerCase()
-      filtered = filtered.filter((e) =>
-        e.merchant.toLowerCase().includes(lowerSearch) ||
-        e.category?.toLowerCase().includes(lowerSearch) ||
-        e.notes?.toLowerCase().includes(lowerSearch)
-      )
+      const lowerSearch = search.toLowerCase();
+      filtered = filtered.filter(
+        (e) =>
+          e.merchant.toLowerCase().includes(lowerSearch) ||
+          e.category?.toLowerCase().includes(lowerSearch) ||
+          e.notes?.toLowerCase().includes(lowerSearch)
+      );
     }
 
     // Category filter
     if (categoryFilter !== 'All') {
-      filtered = filtered.filter((e) => e.category === categoryFilter)
+      filtered = filtered.filter((e) => e.category === categoryFilter);
     }
 
     // Date range filter
-    const now = new Date()
+    const now = new Date();
     if (quickFilter === 'today') {
       filtered = filtered.filter((e) => {
-        const expenseDate = new Date(e.transaction_date).toDateString()
-        return expenseDate === now.toDateString()
-      })
+        const expenseDate = new Date(e.transaction_date).toDateString();
+        return expenseDate === now.toDateString();
+      });
     } else if (quickFilter === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      filtered = filtered.filter((e) => new Date(e.transaction_date) >= weekAgo)
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(
+        (e) => new Date(e.transaction_date) >= weekAgo
+      );
     } else if (quickFilter === 'month') {
-      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1)
-      filtered = filtered.filter((e) => new Date(e.transaction_date) >= monthAgo)
+      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
+      filtered = filtered.filter(
+        (e) => new Date(e.transaction_date) >= monthAgo
+      );
     }
 
-    setFilteredExpenses(filtered)
-  }
+    setFilteredExpenses(filtered);
+  };
 
   useEffect(() => {
-    applyFilters(expenses, searchQuery)
-  }, [quickFilter, categoryFilter, searchQuery])
+    applyFilters(expenses, searchQuery);
+  }, [quickFilter, categoryFilter, searchQuery]);
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/stats')
-      const data = await response.json()
-      setStats(data)
+      const response = await fetch('/api/stats');
+      const data = await response.json();
+      setStats(data);
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching stats:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchBudgets = async () => {
     try {
-      const currentMonth = new Date().toISOString().slice(0, 7)
-      const response = await fetch(`/api/budgets?month=${currentMonth}`)
-      const data = await response.json()
-      setBudgets(data.budgets || [])
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const response = await fetch(`/api/budgets?month=${currentMonth}`);
+      const data = await response.json();
+      setBudgets(data.budgets || []);
     } catch (error) {
-      console.error('Error fetching budgets:', error)
+      console.error('Error fetching budgets:', error);
     }
-  }
+  };
 
   const getCategorySpent = (category: string) => {
-    const currentMonth = new Date().toISOString().slice(0, 7)
+    const currentMonth = new Date().toISOString().slice(0, 7);
     const monthExpenses = expenses.filter((e) => {
-      const expenseMonth = new Date(e.transaction_date).toISOString().slice(0, 7)
-      return expenseMonth === currentMonth && e.category === category
-    })
-    return monthExpenses.reduce((sum, e) => sum + e.amount, 0)
-  }
+      const expenseMonth = new Date(e.transaction_date)
+        .toISOString()
+        .slice(0, 7);
+      return expenseMonth === currentMonth && e.category === category;
+    });
+    return monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+  };
 
   const getBudgetForCategory = (category: string) => {
-    return budgets.find((b: any) => b.category === category)?.amount || 0
-  }
+    return budgets.find((b: any) => b.category === category)?.amount || 0;
+  };
 
   const getBudgetPercentage = (category: string) => {
-    const budget = getBudgetForCategory(category)
-    if (budget === 0) return 0
-    const spent = getCategorySpent(category)
-    return Math.min((spent / budget) * 100, 100)
-  }
+    const budget = getBudgetForCategory(category);
+    if (budget === 0) return 0;
+    const spent = getCategorySpent(category);
+    return Math.min((spent / budget) * 100, 100);
+  };
 
   useEffect(() => {
-    fetchExpenses()
-    fetchStats()
-    fetchBudgets()
+    fetchExpenses();
+    fetchStats();
+    fetchBudgets();
 
     // Check if should show onboarding
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding')
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
     if (!hasSeenOnboarding) {
-      setShowOnboarding(true)
+      setShowOnboarding(true);
     }
-  }, [])
+  }, []);
 
   // Scroll detection for sticky header
   useEffect(() => {
     const handleScroll = () => {
-      if (!contentRef.current) return
+      if (!contentRef.current) return;
 
-      const currentScrollY = contentRef.current.scrollTop
+      const currentScrollY = contentRef.current.scrollTop;
 
       if (currentScrollY > 100) {
-        setScrolled(true)
+        setScrolled(true);
       } else {
-        setScrolled(false)
+        setScrolled(false);
       }
 
-      lastScrollY.current = currentScrollY
-    }
+      lastScrollY.current = currentScrollY;
+    };
 
-    const ref = contentRef.current
+    const ref = contentRef.current;
     if (ref) {
-      ref.addEventListener('scroll', handleScroll, { passive: true })
+      ref.addEventListener('scroll', handleScroll, { passive: true });
     }
 
     return () => {
       if (ref) {
-        ref.removeEventListener('scroll', handleScroll)
+        ref.removeEventListener('scroll', handleScroll);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
-    const expenseToDelete = expenses.find(e => e.id === id)
-    if (!expenseToDelete) return
+    const expenseToDelete = expenses.find((e) => e.id === id);
+    if (!expenseToDelete) return;
 
-    const index = expenses.findIndex(e => e.id === id)
+    const index = expenses.findIndex((e) => e.id === id);
 
     // Optimistic update
-    setExpenses(prev => prev.filter(e => e.id !== id))
-    applyFilters(expenses.filter(e => e.id !== id))
-    hapticFeedback('medium')
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    applyFilters(expenses.filter((e) => e.id !== id));
+    hapticFeedback('medium');
 
     // Store for undo
-    setDeletedExpense({ expense: expenseToDelete, index })
+    setDeletedExpense({ expense: expenseToDelete, index });
 
     // Show undo toast
     toast.success('Expense deleted', {
@@ -233,41 +268,41 @@ export default function Home() {
         onClick: () => handleUndoDelete(),
       },
       duration: 5000,
-    })
+    });
 
     try {
-      await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
-      await fetchStats()
+      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      await fetchStats();
 
       // Clear undo after successful delete
-      setTimeout(() => setDeletedExpense(null), 5000)
+      setTimeout(() => setDeletedExpense(null), 5000);
     } catch (error) {
       // Rollback on error
-      console.error('Error deleting expense:', error)
-      toast.error('Failed to delete expense')
+      console.error('Error deleting expense:', error);
+      toast.error('Failed to delete expense');
       if (expenseToDelete) {
-        setExpenses(prev => {
-          const newExpenses = [...prev]
-          newExpenses.splice(index, 0, expenseToDelete)
-          return newExpenses
-        })
-        applyFilters(expenses)
+        setExpenses((prev) => {
+          const newExpenses = [...prev];
+          newExpenses.splice(index, 0, expenseToDelete);
+          return newExpenses;
+        });
+        applyFilters(expenses);
       }
     }
-  }
+  };
 
   const handleUndoDelete = async () => {
-    if (!deletedExpense) return
+    if (!deletedExpense) return;
 
-    hapticFeedback('light')
+    hapticFeedback('light');
 
     // Restore optimistically
-    setExpenses(prev => {
-      const newExpenses = [...prev]
-      newExpenses.splice(deletedExpense.index, 0, deletedExpense.expense)
-      return newExpenses
-    })
-    applyFilters(expenses)
+    setExpenses((prev) => {
+      const newExpenses = [...prev];
+      newExpenses.splice(deletedExpense.index, 0, deletedExpense.expense);
+      return newExpenses;
+    });
+    applyFilters(expenses);
 
     try {
       // Re-create the expense
@@ -286,25 +321,27 @@ export default function Home() {
           currency: deletedExpense.expense.currency,
           source: deletedExpense.expense.source,
         }),
-      })
+      });
 
-      toast.success('Expense restored')
-      await fetchExpenses()
-      await fetchStats()
-      setDeletedExpense(null)
+      toast.success('Expense restored');
+      await fetchExpenses();
+      await fetchStats();
+      setDeletedExpense(null);
     } catch (error) {
-      console.error('Error restoring expense:', error)
-      toast.error('Failed to restore expense')
-      setExpenses(prev => prev.filter(e => e.id !== deletedExpense.expense.id))
-      applyFilters(expenses)
+      console.error('Error restoring expense:', error);
+      toast.error('Failed to restore expense');
+      setExpenses((prev) =>
+        prev.filter((e) => e.id !== deletedExpense.expense.id)
+      );
+      applyFilters(expenses);
     }
-  }
+  };
 
   const handleEdit = (expense: Expense) => {
-    setEditingExpense(expense)
-    setShowForm(true)
-    hapticFeedback('light')
-  }
+    setEditingExpense(expense);
+    setShowForm(true);
+    hapticFeedback('light');
+  };
 
   const handleUpdateNotes = async (expense: Expense) => {
     try {
@@ -322,22 +359,22 @@ export default function Home() {
           transactionType: expense.transaction_type,
           currency: expense.currency,
         }),
-      })
+      });
 
-      if (!response.ok) throw new Error('Failed to update notes')
+      if (!response.ok) throw new Error('Failed to update notes');
 
-      await fetchExpenses()
-      toast.success('Notes updated')
+      await fetchExpenses();
+      toast.success('Notes updated');
     } catch (error) {
-      console.error('Error updating notes:', error)
-      toast.error('Failed to update notes')
+      console.error('Error updating notes:', error);
+      toast.error('Failed to update notes');
     }
-  }
+  };
 
   const handleSubmit = async (data: any) => {
-    hapticFeedback('medium')
+    hapticFeedback('medium');
 
-    const tempId = `temp-${Date.now()}`
+    const tempId = `temp-${Date.now()}`;
     const optimisticExpense: Expense = {
       id: editingExpense?.id || tempId,
       amount: data.amount,
@@ -349,21 +386,24 @@ export default function Home() {
       cardholder: data.cardholder,
       transaction_type: data.transactionType,
       currency: data.currency,
+      updated_at: new Date().toISOString(),
       source: editingExpense?.source || 'manual',
       created_at: editingExpense?.created_at || new Date().toISOString(),
-    }
+    };
 
     // Optimistic update
     if (editingExpense) {
-      setExpenses(prev => prev.map(e => e.id === editingExpense.id ? optimisticExpense : e))
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === editingExpense.id ? optimisticExpense : e))
+      );
     } else {
-      setExpenses(prev => [optimisticExpense, ...prev])
-      celebrateSuccess() // Celebrate first expense
+      setExpenses((prev) => [optimisticExpense, ...prev]);
+      celebrateSuccess(); // Celebrate first expense
     }
-    applyFilters(expenses)
+    applyFilters(expenses);
 
-    setShowForm(false)
-    setEditingExpense(undefined)
+    setShowForm(false);
+    setEditingExpense(undefined);
 
     toast.promise(
       async () => {
@@ -377,15 +417,15 @@ export default function Home() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...data, source: 'manual' }),
-            })
+            });
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to save expense')
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save expense');
         }
 
-        await fetchExpenses()
-        await fetchStats()
+        await fetchExpenses();
+        await fetchStats();
       },
       {
         loading: editingExpense ? 'Updating...' : 'Adding...',
@@ -393,116 +433,123 @@ export default function Home() {
         error: (err) => {
           // Rollback on error
           if (editingExpense) {
-            const original = expenses.find(e => e.id === editingExpense.id)
+            const original = expenses.find((e) => e.id === editingExpense.id);
             if (original) {
-              setExpenses(prev => prev.map(e => e.id === editingExpense.id ? original : e))
+              setExpenses((prev) =>
+                prev.map((e) => (e.id === editingExpense.id ? original : e))
+              );
             }
           } else {
-            setExpenses(prev => prev.filter(e => e.id !== tempId))
+            setExpenses((prev) => prev.filter((e) => e.id !== tempId));
           }
-          applyFilters(expenses)
-          return err.message || 'Failed to save expense'
+          applyFilters(expenses);
+          return err.message || 'Failed to save expense';
         },
       }
-    )
-  }
+    );
+  };
 
   const handleSync = async () => {
-    setSyncing(true)
-    setSyncStatus('loading')
-    setSyncProgress('Connecting to email...')
-    setSyncDetail('This may take a few moments')
-    hapticFeedback('light')
+    setSyncing(true);
+    setSyncStatus('loading');
+    setSyncProgress('Connecting to email...');
+    setSyncDetail('This may take a few moments');
+    hapticFeedback('light');
 
     try {
-      const response = await fetch('/api/email/sync', { method: 'POST' })
-      const data = await response.json()
+      const response = await fetch('/api/email/sync', { method: 'POST' });
+      const data = await response.json();
 
-      setSyncProgress('Processing emails...')
-      setSyncDetail(`Found ${data.count || 0} new expense(s)`)
+      setSyncProgress('Processing emails...');
+      setSyncDetail(`Found ${data.count || 0} new expense(s)`);
 
-      await fetchExpenses()
-      await fetchStats()
+      await fetchExpenses();
+      await fetchStats();
 
-      setLastSynced(new Date())
-      setSyncStatus('success')
-      setSyncProgress('Sync complete!')
-      setSyncDetail(`Added ${data.count || 0} new expense(s)`)
+      setLastSynced(new Date());
+      setSyncStatus('success');
+      setSyncProgress('Sync complete!');
+      setSyncDetail(`Added ${data.count || 0} new expense(s)`);
 
-      hapticFeedback('medium')
-      toast.success(`Synced ${data.count || 0} new expenses`)
+      hapticFeedback('medium');
+      toast.success(`Synced ${data.count || 0} new expenses`);
 
       if (data.count > 0) {
-        celebrateSuccess()
+        celebrateSuccess();
       }
 
       // Hide success message after 3 seconds
       setTimeout(() => {
-        setSyncStatus('idle')
-        setSyncProgress('')
-        setSyncDetail('')
-      }, 3000)
+        setSyncStatus('idle');
+        setSyncProgress('');
+        setSyncDetail('');
+      }, 3000);
     } catch (error) {
-      console.error('Error syncing:', error)
-      setSyncStatus('error')
-      setSyncProgress('Sync failed')
-      setSyncDetail('Please check your connection and try again')
-      toast.error('Failed to sync emails')
+      console.error('Error syncing:', error);
+      setSyncStatus('error');
+      setSyncProgress('Sync failed');
+      setSyncDetail('Please check your connection and try again');
+      toast.error('Failed to sync emails');
 
       // Hide error message after 5 seconds
       setTimeout(() => {
-        setSyncStatus('idle')
-        setSyncProgress('')
-        setSyncDetail('')
-      }, 5000)
+        setSyncStatus('idle');
+        setSyncProgress('');
+        setSyncDetail('');
+      }, 5000);
     } finally {
-      setSyncing(false)
+      setSyncing(false);
     }
-  }
+  };
 
   // Pull-to-refresh
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (contentRef.current && contentRef.current.scrollTop === 0 && activeView === 'expenses') {
-      touchStart.current = e.touches[0].clientY
+    if (
+      contentRef.current &&
+      contentRef.current.scrollTop === 0 &&
+      activeView === 'expenses'
+    ) {
+      touchStart.current = e.touches[0].clientY;
     }
-  }
+  };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStart.current && activeView === 'expenses') {
-      const pull = e.touches[0].clientY - touchStart.current
+      const pull = e.touches[0].clientY - touchStart.current;
       if (pull > 0) {
-        setPullDistance(Math.min(pull, 100))
+        setPullDistance(Math.min(pull, 100));
       }
     }
-  }
+  };
 
   const handleTouchEnd = async () => {
     if (pullDistance > 70 && !isRefreshing) {
-      setIsRefreshing(true)
-      hapticFeedback('medium')
-      await fetchExpenses()
-      await fetchStats()
-      setIsRefreshing(false)
-      toast.success('Refreshed!')
+      setIsRefreshing(true);
+      hapticFeedback('medium');
+      await fetchExpenses();
+      await fetchStats();
+      setIsRefreshing(false);
     }
-    setPullDistance(0)
-    touchStart.current = 0
-  }
-
+    setPullDistance(0);
+    touchStart.current = 0;
+  };
 
   const todayExpenses = expenses.filter((e) => {
-    const today = new Date().toDateString()
-    const expenseDate = new Date(e.transaction_date).toDateString()
-    return today === expenseDate
-  })
+    const today = new Date().toDateString();
+    const expenseDate = new Date(e.transaction_date).toDateString();
+    return today === expenseDate;
+  });
 
-  const todayTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const todayTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <div
       ref={contentRef}
       className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-36 overflow-auto overscroll-behavior-none"
-      style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))',
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -517,7 +564,11 @@ export default function Home() {
             className="fixed top-0 left-0 right-0 flex justify-center pt-2 z-50 pointer-events-none"
           >
             <div className="bg-card rounded-full p-2 shadow-lg">
-              <RefreshCw className={`h-5 w-5 ${pullDistance > 70 ? 'text-primary' : 'text-muted-foreground'}`} />
+              <RefreshCw
+                className={`h-5 w-5 ${
+                  pullDistance > 70 ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              />
             </div>
           </motion.div>
         )}
@@ -533,9 +584,21 @@ export default function Home() {
       >
         <div className="flex items-center justify-between mb-3 pt-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-high-contrast">Expenses</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-high-contrast">
+              Expenses
+            </h1>
             <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-              {activeView === 'expenses' ? 'Track spending' : activeView === 'analytics' ? 'View insights' : activeView === 'budget' ? 'Manage budget' : activeView === 'goals' ? 'Savings goals' : activeView === 'summary' ? 'Weekly report' : 'Spending patterns'}
+              {activeView === 'expenses'
+                ? 'Track spending'
+                : activeView === 'analytics'
+                ? 'View insights'
+                : activeView === 'budget'
+                ? 'Manage budget'
+                : activeView === 'goals'
+                ? 'Savings goals'
+                : activeView === 'summary'
+                ? 'Weekly report'
+                : 'Spending patterns'}
             </p>
           </div>
         </div>
@@ -550,12 +613,15 @@ export default function Home() {
           transition={{ duration: 0.3 }}
           className="glass rounded-2xl p-4 sm:p-6 overflow-hidden"
         >
-          <p className="text-muted-foreground text-xs sm:text-sm mb-2.5">Today's Spending</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mb-2.5">
+            Today's Spending
+          </p>
           <p className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
             <AnimatedCounter value={todayTotal} prefix="₫ " duration={1200} />
           </p>
           <p className="text-muted-foreground text-sm sm:text-base mt-3">
-            {todayExpenses.length} {todayExpenses.length === 1 ? 'expense' : 'expenses'}
+            {todayExpenses.length}{' '}
+            {todayExpenses.length === 1 ? 'expense' : 'expenses'}
           </p>
         </motion.div>
       </motion.div>
@@ -568,29 +634,31 @@ export default function Home() {
             <StatsCardSkeleton />
           </div>
         </div>
-      ) : stats && (
-        <div className="px-5 mt-6 mb-6">
-          <div className="grid grid-cols-2 gap-3">
-            <StatsCard
-              title="Total"
-              value={formatCurrency(stats.total, 'VND')}
-              icon={Wallet}
-              description={`${stats.count} total`}
-              index={0}
-            />
-            <StatsCard
-              title="Top Merchant"
-              value={stats.topMerchants?.[0]?.merchant?.slice(0, 15) || 'N/A'}
-              icon={TrendingDown}
-              description={
-                stats.topMerchants?.[0]
-                  ? formatCurrency(stats.topMerchants[0].amount, 'VND')
-                  : 'No data'
-              }
-              index={1}
-            />
+      ) : (
+        stats && (
+          <div className="px-5 mt-6 mb-6">
+            <div className="grid grid-cols-2 gap-3">
+              <StatsCard
+                title="Total"
+                value={formatCurrency(stats.total, 'VND')}
+                icon={Wallet}
+                description={`${stats.count} total`}
+                index={0}
+              />
+              <StatsCard
+                title="Top Merchant"
+                value={stats.topMerchants?.[0]?.merchant?.slice(0, 15) || 'N/A'}
+                icon={TrendingDown}
+                description={
+                  stats.topMerchants?.[0]
+                    ? formatCurrency(stats.topMerchants[0].amount, 'VND')
+                    : 'No data'
+                }
+                index={1}
+              />
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Sync Progress */}
@@ -621,11 +689,15 @@ export default function Home() {
 
               {/* Filter Button */}
               <Button
-                variant={(quickFilter !== 'all' || categoryFilter !== 'All') ? 'default' : 'outline'}
+                variant={
+                  quickFilter !== 'all' || categoryFilter !== 'All'
+                    ? 'default'
+                    : 'outline'
+                }
                 className="ripple-effect min-h-touch gap-2 whitespace-nowrap px-4"
                 onClick={() => {
-                  setShowFilterSheet(true)
-                  hapticFeedback('light')
+                  setShowFilterSheet(true);
+                  hapticFeedback('light');
                 }}
               >
                 <Filter className="h-5 w-5" />
@@ -646,8 +718,8 @@ export default function Home() {
                   variant="ghost"
                   size="default"
                   onClick={() => {
-                    setShowAllExpenses(!showAllExpenses)
-                    hapticFeedback('light')
+                    setShowAllExpenses(!showAllExpenses);
+                    hapticFeedback('light');
                   }}
                   className="gap-2 ripple-effect min-h-touch px-4"
                 >
@@ -680,17 +752,32 @@ export default function Home() {
               >
                 💸
               </motion.div>
-              <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2">No expenses yet</h3>
+              <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2">
+                No expenses yet
+              </h3>
               <p className="text-muted-foreground text-sm sm:text-base mb-8 max-w-sm mx-auto">
-                Start tracking your spending by adding an expense manually or syncing your emails
+                Start tracking your spending by adding an expense manually or
+                syncing your emails
               </p>
               <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
-                <Button onClick={() => setShowForm(true)} size="lg" className="gap-2 ripple-effect min-h-touch-lg text-sm sm:text-base shadow-lg">
+                <Button
+                  onClick={() => setShowForm(true)}
+                  size="lg"
+                  className="gap-2 ripple-effect min-h-touch-lg text-sm sm:text-base shadow-lg"
+                >
                   <Plus className="h-5 w-5" />
                   Add Your First Expense
                 </Button>
-                <Button variant="outline" onClick={handleSync} disabled={syncing} size="lg" className="gap-2 ripple-effect min-h-touch-lg text-sm sm:text-base">
-                  <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
+                <Button
+                  variant="outline"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  size="lg"
+                  className="gap-2 ripple-effect min-h-touch-lg text-sm sm:text-base"
+                >
+                  <RefreshCw
+                    className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`}
+                  />
                   Or Sync from Email
                 </Button>
               </div>
@@ -709,19 +796,22 @@ export default function Home() {
               >
                 🔍
               </motion.div>
-              <h3 className="text-base sm:text-lg font-semibold mb-2">No matching expenses</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-2">
+                No matching expenses
+              </h3>
               <p className="text-muted-foreground text-sm sm:text-base mb-6 max-w-sm mx-auto">
-                Try adjusting your filters or search terms to find what you're looking for
+                Try adjusting your filters or search terms to find what you're
+                looking for
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => {
-                    setQuickFilter('all')
-                    setCategoryFilter('All')
-                    setSearchQuery('')
-                    hapticFeedback('light')
+                    setQuickFilter('all');
+                    setCategoryFilter('All');
+                    setSearchQuery('');
+                    hapticFeedback('light');
                   }}
                   className="ripple-effect min-h-touch text-sm sm:text-base"
                 >
@@ -740,7 +830,10 @@ export default function Home() {
           ) : (
             <div className="space-y-3.5">
               <AnimatePresence mode="popLayout">
-                {(showAllExpenses ? filteredExpenses : filteredExpenses.slice(0, 10)).map((expense) => (
+                {(showAllExpenses
+                  ? filteredExpenses
+                  : filteredExpenses.slice(0, 10)
+                ).map((expense) => (
                   <ExpandableExpenseCard
                     key={expense.id}
                     expense={expense}
@@ -806,23 +899,23 @@ export default function Home() {
       {/* Floating Action Menu */}
       <FloatingActionMenu
         onAddExpense={() => {
-          setEditingExpense(undefined)
-          setShowForm(true)
+          setEditingExpense(undefined);
+          setShowForm(true);
         }}
         onSyncEmails={handleSync}
         onExport={() => {
-          exportToCSV(expenses, `expenses-${new Date().toISOString().slice(0, 10)}.csv`)
-          toast.success('Exported to CSV')
-          hapticFeedback('light')
+          exportToCSV(
+            expenses,
+            `expenses-${new Date().toISOString().slice(0, 10)}.csv`
+          );
+          toast.success('Exported to CSV');
+          hapticFeedback('light');
         }}
         syncing={syncing}
       />
 
       {/* Bottom Navigation */}
-      <BottomNavigation
-        activeView={activeView}
-        onViewChange={setActiveView}
-      />
+      <BottomNavigation activeView={activeView} onViewChange={setActiveView} />
 
       {/* Network Status */}
       <NetworkStatus syncing={syncing} lastSynced={lastSynced} />
@@ -834,8 +927,8 @@ export default function Home() {
             expense={editingExpense}
             onSubmit={handleSubmit}
             onCancel={() => {
-              setShowForm(false)
-              setEditingExpense(undefined)
+              setShowForm(false);
+              setEditingExpense(undefined);
             }}
           />
         )}
@@ -849,12 +942,12 @@ export default function Home() {
         <Onboarding
           onComplete={() => setShowOnboarding(false)}
           onAddExpense={() => {
-            setShowForm(true)
-            setShowOnboarding(false)
+            setShowForm(true);
+            setShowOnboarding(false);
           }}
           onSyncEmails={() => {
-            handleSync()
-            setShowOnboarding(false)
+            handleSync();
+            setShowOnboarding(false);
           }}
         />
       )}
@@ -870,8 +963,8 @@ export default function Home() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => {
-                setShowFilterSheet(false)
-                hapticFeedback('light')
+                setShowFilterSheet(false);
+                hapticFeedback('light');
               }}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
             />
@@ -888,7 +981,10 @@ export default function Home() {
               className="fixed inset-x-0 bottom-0 z-50 bg-card/95 backdrop-blur-xl rounded-t-[2rem] shadow-2xl border-t border-border/50"
               style={{ maxHeight: '75vh' }}
             >
-              <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: '75vh' }}>
+              <div
+                className="overflow-y-auto overscroll-contain"
+                style={{ maxHeight: '75vh' }}
+              >
                 {/* Handle bar */}
                 <div className="flex justify-center pt-4 pb-3">
                   <div className="w-12 h-1.5 bg-muted-foreground/20 rounded-full" />
@@ -897,7 +993,9 @@ export default function Home() {
                 <div className="px-6 pb-8">
                   {/* Header */}
                   <div className="mb-8">
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Filters</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                      Filters
+                    </h2>
                     <p className="text-muted-foreground text-xs sm:text-sm mt-1">
                       Refine your expense view
                     </p>
@@ -913,8 +1011,10 @@ export default function Home() {
                         <button
                           key={filter.id}
                           onClick={() => {
-                            setQuickFilter(filter.id)
-                            hapticFeedback('light')
+                            setQuickFilter(
+                              filter.id as 'all' | 'today' | 'week' | 'month'
+                            );
+                            hapticFeedback('light');
                           }}
                           className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
                             quickFilter === filter.id
@@ -935,17 +1035,17 @@ export default function Home() {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORY_FILTERS.map((cat) => {
-                        const budget = getBudgetForCategory(cat)
-                        const spent = getCategorySpent(cat)
-                        const percentage = getBudgetPercentage(cat)
-                        const hasBudget = budget > 0 && cat !== 'All'
+                        const budget = getBudgetForCategory(cat);
+                        const spent = getCategorySpent(cat);
+                        const percentage = getBudgetPercentage(cat);
+                        const hasBudget = budget > 0 && cat !== 'All';
 
                         return (
                           <button
                             key={cat}
                             onClick={() => {
-                              setCategoryFilter(cat)
-                              hapticFeedback('medium')
+                              setCategoryFilter(cat);
+                              hapticFeedback('medium');
                             }}
                             className={`relative px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 overflow-hidden ${
                               categoryFilter === cat
@@ -975,31 +1075,46 @@ export default function Home() {
                               )}
                             </span>
                           </button>
-                        )
+                        );
                       })}
                     </div>
-                    {categoryFilter !== 'All' && getBudgetForCategory(categoryFilter) > 0 && (
-                      <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-                        <div className="flex justify-between text-xs mb-1.5">
-                          <span className="text-muted-foreground">Spent this month</span>
-                          <span className="font-medium">
-                            {formatCurrency(getCategorySpent(categoryFilter), 'VND')} / {formatCurrency(getBudgetForCategory(categoryFilter), 'VND')}
-                          </span>
+                    {categoryFilter !== 'All' &&
+                      getBudgetForCategory(categoryFilter) > 0 && (
+                        <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-muted-foreground">
+                              Spent this month
+                            </span>
+                            <span className="font-medium">
+                              {formatCurrency(
+                                getCategorySpent(categoryFilter),
+                                'VND'
+                              )}{' '}
+                              /{' '}
+                              {formatCurrency(
+                                getBudgetForCategory(categoryFilter),
+                                'VND'
+                              )}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                getBudgetPercentage(categoryFilter) >= 100
+                                  ? 'bg-destructive'
+                                  : getBudgetPercentage(categoryFilter) >= 80
+                                  ? 'bg-yellow-500'
+                                  : 'bg-green-500'
+                              }`}
+                              style={{
+                                width: `${getBudgetPercentage(
+                                  categoryFilter
+                                )}%`,
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              getBudgetPercentage(categoryFilter) >= 100
-                                ? 'bg-destructive'
-                                : getBudgetPercentage(categoryFilter) >= 80
-                                ? 'bg-yellow-500'
-                                : 'bg-green-500'
-                            }`}
-                            style={{ width: `${getBudgetPercentage(categoryFilter)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Actions */}
@@ -1009,9 +1124,9 @@ export default function Home() {
                       size="lg"
                       className="flex-1 min-h-touch-lg rounded-xl font-medium"
                       onClick={() => {
-                        setQuickFilter('all')
-                        setCategoryFilter('All')
-                        hapticFeedback('light')
+                        setQuickFilter('all');
+                        setCategoryFilter('All');
+                        hapticFeedback('light');
                       }}
                     >
                       Reset All
@@ -1020,8 +1135,8 @@ export default function Home() {
                       size="lg"
                       className="flex-1 min-h-touch-lg rounded-xl font-medium shadow-lg"
                       onClick={() => {
-                        setShowFilterSheet(false)
-                        hapticFeedback('medium')
+                        setShowFilterSheet(false);
+                        hapticFeedback('medium');
                       }}
                     >
                       Apply
@@ -1034,5 +1149,5 @@ export default function Home() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
