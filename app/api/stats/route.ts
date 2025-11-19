@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -11,6 +20,7 @@ export async function GET(request: NextRequest) {
     let totalQuery = supabase
       .from('expenses')
       .select('amount', { count: 'exact' })
+      .eq('user_id', user.id)
 
     if (startDate) {
       totalQuery = totalQuery.gte('transaction_date', startDate)
@@ -31,6 +41,7 @@ export async function GET(request: NextRequest) {
     let categoryQuery = supabase
       .from('expenses')
       .select('category, amount')
+      .eq('user_id', user.id)
 
     if (startDate) {
       categoryQuery = categoryQuery.gte('transaction_date', startDate)
@@ -59,6 +70,7 @@ export async function GET(request: NextRequest) {
     let merchantQuery = supabase
       .from('expenses')
       .select('merchant, amount')
+      .eq('user_id', user.id)
 
     if (startDate) {
       merchantQuery = merchantQuery.gte('transaction_date', startDate)
