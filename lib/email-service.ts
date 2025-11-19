@@ -72,12 +72,28 @@ export class EmailService {
             }
 
             console.log(`Found ${results.length} unread emails from trusted senders`)
-            const fetch = imap.fetch(results, { bodies: '' })
+
+            // Map to track UIDs for marking as read
+            const uidMap = new Map<number, number>() // seqno -> UID
+
+            const fetch = imap.fetch(results, {
+              bodies: '',
+              struct: true // Need this to get attributes
+            })
 
             // Track all parsing promises to ensure they complete before closing connection
             const parsingPromises: Promise<void>[] = []
 
             fetch.on('message', (msg, seqno) => {
+              // Get the UID for this message
+              let messageUid: number | undefined
+
+              msg.once('attributes', (attrs) => {
+                messageUid = attrs.uid
+                uidMap.set(seqno, attrs.uid)
+                console.log(`Message UID: ${attrs.uid}, Seqno: ${seqno}`)
+              })
+
               msg.on('body', (stream) => {
                 const parsingPromise = new Promise<void>((resolveMsg) => {
                   simpleParser(stream as any, async (err, parsed) => {
@@ -112,17 +128,20 @@ export class EmailService {
                         console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
                         expenses.push(expense)
                         // Track UID for marking as read (avoid duplicates if AI fails)
-                        processedUids.push(seqno)
+                        const uid = uidMap.get(seqno)
+                        if (uid) processedUids.push(uid)
                       } else {
                         console.log(`✗ Email parsing returned null (likely skipped or failed)`)
                         // Still mark as read to avoid re-processing promotional/pending emails
-                        processedUids.push(seqno)
+                        const uid = uidMap.get(seqno)
+                        if (uid) processedUids.push(uid)
                       }
                       // Silently skip emails that don't parse (pending orders, confirmations, etc.)
                     } catch (parseError) {
                       console.error('Error parsing email:', parseError)
                       // Mark as read anyway to avoid infinite retry
-                      processedUids.push(seqno)
+                      const uid = uidMap.get(seqno)
+                      if (uid) processedUids.push(uid)
                     }
 
                     resolveMsg()
@@ -148,17 +167,20 @@ export class EmailService {
 
               // Mark processed emails as read to avoid re-parsing
               if (processedUids.length > 0) {
-                console.log(`Marking ${processedUids.length} email(s) as read...`)
+                console.log(`Marking ${processedUids.length} email(s) as read (UIDs: ${processedUids.join(', ')})...`)
+
+                // Use UID-based addFlags
                 imap.addFlags(processedUids, ['\\Seen'], (err) => {
                   if (err) {
                     console.error('Failed to mark emails as read:', err)
                     // Don't fail the whole operation, just log it
                   } else {
-                    console.log(`✓ Marked ${processedUids.length} email(s) as read`)
+                    console.log(`✓ Successfully marked ${processedUids.length} email(s) as read`)
                   }
                   imap.end()
                 })
               } else {
+                console.log('No emails to mark as read')
                 imap.end()
               }
             })
