@@ -97,8 +97,12 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
       {/* Background action buttons */}
       <div className="absolute inset-0 flex items-center justify-between px-4">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isRevealed === 'right' ? 1 : 0 }}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{
+            opacity: isRevealed === 'right' ? 1 : 0,
+            x: isRevealed === 'right' ? 0 : -10,
+          }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
           className="flex items-center gap-2 text-blue-600"
         >
           <Edit className="h-5 w-5" />
@@ -106,8 +110,12 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isRevealed === 'left' ? 1 : 0 }}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{
+            opacity: isRevealed === 'left' ? 1 : 0,
+            x: isRevealed === 'left' ? 0 : 10,
+          }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
           className="flex items-center gap-2 text-destructive"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -124,9 +132,10 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
         dragElastic={0.1}
         onDragEnd={handleDragEnd}
         style={{ x, backgroundColor }}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
         className={`bg-card/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} hover:shadow-md transition-all cursor-pointer ripple-effect`}
         onClick={handleCardClick}
       >
@@ -163,13 +172,16 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
         )}
 
         {/* Expanded content */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {isExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{
+                height: { type: 'spring', damping: 30, stiffness: 300, mass: 0.8 },
+                opacity: { duration: 0.2, ease: 'easeOut' },
+              }}
               className="overflow-hidden"
             >
               <div className="pt-3 border-t space-y-3">

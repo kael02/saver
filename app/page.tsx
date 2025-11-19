@@ -22,13 +22,6 @@ import { NetworkStatus } from '@/components/network-status'
 import { Onboarding } from '@/components/onboarding'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
 import { formatCurrency, hapticFeedback } from '@/lib/utils'
 import { exportToCSV } from '@/lib/export'
 import { celebrateSuccess, celebrateMilestone, celebrateGoalComplete } from '@/components/confetti'
@@ -586,95 +579,19 @@ export default function Home() {
               </div>
 
               {/* Filter Button */}
-              <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant={(quickFilter !== 'all' || categoryFilter !== 'All') ? 'default' : 'outline'}
-                    className="ripple-effect min-h-[48px] gap-2 whitespace-nowrap px-4"
-                    onClick={() => hapticFeedback('light')}
-                  >
-                    <Filter className="h-5 w-5" />
-                    {(quickFilter !== 'all' || categoryFilter !== 'All') && (
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    )}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh]">
-                  <SheetHeader className="mb-6">
-                    <SheetTitle>Filter Expenses</SheetTitle>
-                  </SheetHeader>
-
-                  {/* Time Range Section */}
-                  <div className="mb-8">
-                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Time Range</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {QUICK_FILTERS.map((filter) => (
-                        <Button
-                          key={filter.id}
-                          variant={quickFilter === filter.id ? 'default' : 'outline'}
-                          size="lg"
-                          className="min-h-[56px] text-base"
-                          onClick={() => {
-                            setQuickFilter(filter.id)
-                            hapticFeedback('medium')
-                          }}
-                        >
-                          {quickFilter === filter.id && <Check className="h-5 w-5 mr-2" />}
-                          {filter.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Category Section */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Category</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CATEGORY_FILTERS.map((cat) => (
-                        <Button
-                          key={cat}
-                          variant={categoryFilter === cat ? 'default' : 'outline'}
-                          size="lg"
-                          className="min-h-[56px] text-base"
-                          onClick={() => {
-                            setCategoryFilter(cat)
-                            hapticFeedback('medium')
-                          }}
-                        >
-                          {categoryFilter === cat && <Check className="h-5 w-5 mr-2" />}
-                          {cat}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="flex-1 min-h-[52px]"
-                      onClick={() => {
-                        setQuickFilter('all')
-                        setCategoryFilter('All')
-                        hapticFeedback('light')
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      size="lg"
-                      className="flex-1 min-h-[52px]"
-                      onClick={() => {
-                        setShowFilterSheet(false)
-                        hapticFeedback('medium')
-                      }}
-                    >
-                      Apply Filters
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <Button
+                variant={(quickFilter !== 'all' || categoryFilter !== 'All') ? 'default' : 'outline'}
+                className="ripple-effect min-h-[48px] gap-2 whitespace-nowrap px-4"
+                onClick={() => {
+                  setShowFilterSheet(true)
+                  hapticFeedback('light')
+                }}
+              >
+                <Filter className="h-5 w-5" />
+                {(quickFilter !== 'all' || categoryFilter !== 'All') && (
+                  <span className="h-2 w-2 rounded-full bg-white" />
+                )}
+              </Button>
             </div>
 
             <div className="flex items-center justify-between mb-6">
@@ -831,6 +748,156 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Filter Sheet - Custom smooth animation */}
+      <AnimatePresence>
+        {showFilterSheet && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={() => {
+                setShowFilterSheet(false)
+                hapticFeedback('light')
+              }}
+              className="fixed inset-0 bg-black/40 z-50"
+            />
+
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{
+                type: 'spring',
+                damping: 30,
+                stiffness: 300,
+                mass: 0.8,
+              }}
+              className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl shadow-2xl overflow-hidden"
+              style={{ maxHeight: '85vh' }}
+            >
+              <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: '85vh' }}>
+                {/* Handle bar */}
+                <div className="flex justify-center pt-3 pb-2">
+                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+                </div>
+
+                <div className="px-6 pb-safe-bottom">
+                  {/* Header */}
+                  <div className="mb-6 pt-2">
+                    <h2 className="text-2xl font-bold">Filter Expenses</h2>
+                  </div>
+
+                  {/* Time Range Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mb-8"
+                  >
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+                      Time Range
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {QUICK_FILTERS.map((filter, index) => (
+                        <motion.div
+                          key={filter.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.15 + index * 0.03 }}
+                        >
+                          <Button
+                            variant={quickFilter === filter.id ? 'default' : 'outline'}
+                            size="lg"
+                            className="w-full min-h-[56px] text-base ripple-effect"
+                            onClick={() => {
+                              setQuickFilter(filter.id)
+                              hapticFeedback('medium')
+                            }}
+                          >
+                            {quickFilter === filter.id && <Check className="h-5 w-5 mr-2" />}
+                            {filter.label}
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Category Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mb-6"
+                  >
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+                      Category
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {CATEGORY_FILTERS.map((cat, index) => (
+                        <motion.div
+                          key={cat}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.25 + index * 0.025 }}
+                        >
+                          <Button
+                            variant={categoryFilter === cat ? 'default' : 'outline'}
+                            size="lg"
+                            className="w-full min-h-[56px] text-base ripple-effect"
+                            onClick={() => {
+                              setCategoryFilter(cat)
+                              hapticFeedback('medium')
+                            }}
+                          >
+                            {categoryFilter === cat && <Check className="h-5 w-5 mr-2" />}
+                            {cat}
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Actions */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex gap-3 pt-4 pb-6 border-t sticky bottom-0 bg-card"
+                  >
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 min-h-[52px] ripple-effect"
+                      onClick={() => {
+                        setQuickFilter('all')
+                        setCategoryFilter('All')
+                        hapticFeedback('light')
+                      }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      size="lg"
+                      className="flex-1 min-h-[52px] ripple-effect"
+                      onClick={() => {
+                        setShowFilterSheet(false)
+                        hapticFeedback('medium')
+                      }}
+                    >
+                      Apply Filters
+                    </Button>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

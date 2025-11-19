@@ -63,6 +63,7 @@ export function FloatingActionMenu({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             onClick={toggleMenu}
             className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-40"
           />
@@ -71,12 +72,13 @@ export function FloatingActionMenu({
 
       {/* Action buttons - Positioned above bottom nav */}
       <div className="fixed right-6 z-50" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-        <AnimatePresence>
+        <AnimatePresence mode="popLayout">
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="absolute bottom-20 right-0 flex flex-col gap-3 items-end"
             >
               {actions.map((action, index) => {
@@ -84,10 +86,15 @@ export function FloatingActionMenu({
                 return (
                   <motion.div
                     key={action.label}
-                    initial={{ opacity: 0, x: 20, y: 20 }}
-                    animate={{ opacity: 1, x: 0, y: 0 }}
-                    exit={{ opacity: 0, x: 20, y: 20 }}
-                    transition={{ delay: index * 0.05 }}
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                    transition={{
+                      delay: index * 0.04,
+                      type: 'spring',
+                      damping: 20,
+                      stiffness: 400,
+                    }}
                     className="flex items-center gap-3"
                   >
                     <span className="bg-card px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
@@ -112,7 +119,10 @@ export function FloatingActionMenu({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1, rotate: isOpen ? 45 : 0 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          transition={{
+            scale: { type: 'spring', damping: 15, stiffness: 300 },
+            rotate: { type: 'spring', damping: 20, stiffness: 300 },
+          }}
         >
           <Button
             size="lg"
