@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getEmailServices } from '@/lib/email-service'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST() {
   try {
@@ -44,7 +44,7 @@ export async function POST() {
     for (const expense of expenses) {
       console.log(`Attempting to insert: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
 
-      const { data, error } = await supabase.from('expenses').insert([
+      const { data, error } = await supabaseAdmin.from('expenses').insert([
         {
           card_number: expense.cardNumber,
           cardholder: expense.cardholder,
@@ -104,7 +104,7 @@ export async function POST() {
 export async function GET() {
   try {
     // Return sync status and last sync time
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('expenses')
       .select('created_at')
       .eq('source', 'email')
