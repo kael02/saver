@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate, getCategoryColor, hapticFeedback } from '@/lib/utils'
-import { Trash2, Edit, Mail, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, CreditCard, User, Calendar } from 'lucide-react'
+import { Trash2, Edit, Mail, ChevronDown, ChevronUp, Clock, CreditCard, User, Calendar } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 interface ExpandableExpenseCardProps {
@@ -29,35 +27,10 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: ExpandableExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [isRevealed, setIsRevealed] = useState<'left' | 'right' | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(expense.notes || '')
-  const x = useMotionValue(0)
-
-  const backgroundColor = useTransform(
-    x,
-    [-80, 0, 80],
-    ['rgba(239, 68, 68, 0.15)', 'rgba(0, 0, 0, 0)', 'rgba(59, 130, 246, 0.15)']
-  )
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
-
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = 70
-
-    if (info.offset.x < -threshold && onDelete) {
-      setIsRevealed('left')
-      hapticFeedback('medium')
-      x.set(-80)
-    } else if (info.offset.x > threshold && onEdit) {
-      setIsRevealed('right')
-      hapticFeedback('medium')
-      x.set(80)
-    } else {
-      setIsRevealed(null)
-      x.set(0)
-    }
-  }
 
   const handleDelete = () => {
     if (onDelete) {
@@ -74,13 +47,8 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   }
 
   const handleCardClick = () => {
-    if (isRevealed) {
-      if (isRevealed === 'left') handleDelete()
-      else if (isRevealed === 'right') handleEdit()
-    } else {
-      hapticFeedback('light')
-      setIsExpanded(!isExpanded)
-    }
+    hapticFeedback('light')
+    setIsExpanded(!isExpanded)
   }
 
   const handleSaveNotes = () => {
@@ -92,45 +60,10 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
-      {/* Background action buttons */}
-      <div className="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
-        <div
-          className="flex items-center gap-2 text-blue-600 transition-opacity duration-150"
-          style={{ opacity: isRevealed === 'right' ? 1 : 0 }}
-        >
-          <Edit className="h-5 w-5" />
-          <ChevronRight className="h-4 w-4" />
-        </div>
-
-        <div
-          className="flex items-center gap-2 text-destructive transition-opacity duration-150"
-          style={{ opacity: isRevealed === 'left' ? 1 : 0 }}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <Trash2 className="h-5 w-5" />
-        </div>
-      </div>
-
-      {/* Card */}
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: -100, right: 100 }}
-        dragElastic={0.05}
-        dragMomentum={false}
-        dragTransition={{
-          power: 0,
-          timeConstant: 200,
-        }}
-        onDragEnd={handleDragEnd}
-        style={{ x, backgroundColor, willChange: 'transform' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0, transition: { duration: 0.1 } }}
-        transition={{ duration: 0.15 }}
-        className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} transition-shadow cursor-pointer`}
-        onClick={handleCardClick}
-      >
+    <div
+      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} transition-shadow cursor-pointer active:scale-[0.98] transition-transform`}
+      onClick={handleCardClick}
+    >
         <div className="flex items-start justify-between mb-3 gap-2">
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <div className="text-2xl sm:text-3xl flex-shrink-0">
@@ -296,7 +229,6 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             )}
           </div>
         </div>
-      </motion.div>
     </div>
   )
 }
