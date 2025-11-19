@@ -75,7 +75,7 @@ export class EmailService {
 
             fetch.on('message', (msg) => {
               msg.on('body', (stream) => {
-                simpleParser(stream, async (err, parsed) => {
+                simpleParser(stream as any, async (err, parsed) => {
                   if (err) {
                     console.error('Error parsing email:', err)
                     return
@@ -120,7 +120,7 @@ export class EmailService {
         })
       })
 
-      imap.once('error', (err) => {
+      imap.once('error', (err: Error) => {
         console.error('IMAP error:', err)
         reject(err)
       })

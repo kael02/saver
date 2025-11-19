@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, History } from 'lucide-react'
-import { Input } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { Expense } from '@/lib/supabase'
 
 interface SearchBarProps {

@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.39.0",
     "@use-gesture/react": "^10.3.1",
     "canvas-confetti": "^1.9.4",
@@ -39,7 +41,9 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/imap": "^0.8.40",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
