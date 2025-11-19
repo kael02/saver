@@ -1,55 +1,58 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { WifiOff, Wifi, Clock } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion';
+import { Clock, Wifi, WifiOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface NetworkStatusProps {
-  syncing?: boolean
-  lastSynced?: Date | null
+  syncing?: boolean;
+  lastSynced?: Date | null;
 }
 
-export function NetworkStatus({ syncing = false, lastSynced = null }: NetworkStatusProps) {
-  const [isOnline, setIsOnline] = useState(true)
-  const [showOffline, setShowOffline] = useState(false)
+export function NetworkStatus({
+  syncing = false,
+  lastSynced = null,
+}: NetworkStatusProps) {
+  const [isOnline, setIsOnline] = useState(true);
+  const [showOffline, setShowOffline] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true)
-      setShowOffline(false)
-    }
+      setIsOnline(true);
+      setShowOffline(false);
+    };
 
     const handleOffline = () => {
-      setIsOnline(false)
-      setShowOffline(true)
-    }
+      setIsOnline(false);
+      setShowOffline(true);
+    };
 
-    setIsOnline(navigator.onLine)
+    setIsOnline(navigator.onLine);
 
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const formatLastSynced = () => {
-    if (!lastSynced) return 'Never synced'
+    if (!lastSynced) return 'Never synced';
 
-    const now = new Date()
-    const diff = now.getTime() - lastSynced.getTime()
-    const minutes = Math.floor(diff / 60000)
+    const now = new Date();
+    const diff = now.getTime() - lastSynced.getTime();
+    const minutes = Math.floor(diff / 60000);
 
-    if (minutes < 1) return 'Just now'
-    if (minutes === 1) return '1 minute ago'
-    if (minutes < 60) return `${minutes} minutes ago'
-    const hours = Math.floor(minutes / 60)
-    if (hours === 1) return '1 hour ago'
-    if (hours < 24) return `${hours} hours ago`
-    return lastSynced.toLocaleDateString()
-  }
+    if (minutes < 1) return 'Just now';
+    if (minutes === 1) return '1 minute ago';
+    if (minutes < 60) return `${minutes} minutes ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours === 1) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    return lastSynced.toLocaleDateString();
+  };
 
   return (
     <>
@@ -98,5 +101,5 @@ export function NetworkStatus({ syncing = false, lastSynced = null }: NetworkSta
         </div>
       )}
     </>
-  )
+  );
 }
