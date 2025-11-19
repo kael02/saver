@@ -116,22 +116,35 @@ export function FloatingActionMenu({
         </AnimatePresence>
 
         {/* Main FAB */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1, rotate: isOpen ? 45 : 0 }}
-          transition={{
-            scale: { type: 'spring', damping: 15, stiffness: 300 },
-            rotate: { type: 'spring', damping: 20, stiffness: 300 },
-          }}
+        <Button
+          size="lg"
+          onClick={toggleMenu}
+          className="min-h-touch-xl min-w-touch-xl rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110 active:scale-95 text-white relative"
         >
-          <Button
-            size="lg"
-            onClick={toggleMenu}
-            className="min-h-touch-xl min-w-touch-xl rounded-full shadow-2xl hover:shadow-xl transition-all bg-gradient-to-br from-blue-600 to-purple-600 hover:scale-110 text-white"
-          >
-            {isOpen ? <X className="h-6 w-6 sm:h-7 sm:w-7 text-white" /> : <Plus className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
-          </Button>
-        </motion.div>
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+              >
+                <X className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="open"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+              >
+                <Plus className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Button>
       </div>
     </>
   )

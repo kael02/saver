@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { ExpandableExpenseCard } from '@/components/expandable-expense-card'
 import { StatsCard } from '@/components/stats-card'
-import { ExpenseCardSkeleton, StatsCardSkeleton } from '@/components/skeleton-loader'
+import { ExpenseCardSkeleton, StatsCardSkeleton, ChartSkeleton, BudgetCardSkeleton, InsightCardSkeleton } from '@/components/skeleton-loader'
 import { QuickExpenseForm } from '@/components/quick-expense-form'
 import { BottomNavigation } from '@/components/bottom-navigation'
 import { AnalyticsCharts } from '@/components/analytics-charts'
@@ -753,15 +753,53 @@ export default function Home() {
             </div>
           )
         ) : activeView === 'analytics' ? (
-          <AnalyticsCharts expenses={expenses} />
+          loading ? (
+            <div className="space-y-6">
+              <ChartSkeleton />
+              <ChartSkeleton />
+            </div>
+          ) : (
+            <AnalyticsCharts expenses={expenses} />
+          )
         ) : activeView === 'budget' ? (
-          <BudgetTracker expenses={expenses} />
+          loading ? (
+            <div className="space-y-4">
+              <BudgetCardSkeleton />
+              <BudgetCardSkeleton />
+              <BudgetCardSkeleton />
+              <BudgetCardSkeleton />
+            </div>
+          ) : (
+            <BudgetTracker expenses={expenses} />
+          )
         ) : activeView === 'goals' ? (
-          <SavingsGoals />
+          loading ? (
+            <div className="space-y-4">
+              <InsightCardSkeleton />
+              <InsightCardSkeleton />
+            </div>
+          ) : (
+            <SavingsGoals />
+          )
         ) : activeView === 'summary' ? (
-          <WeeklySummary expenses={expenses} />
+          loading ? (
+            <div className="space-y-6">
+              <ChartSkeleton />
+              <InsightCardSkeleton />
+            </div>
+          ) : (
+            <WeeklySummary expenses={expenses} />
+          )
         ) : activeView === 'insights' ? (
-          <CategoryInsights expenses={expenses} />
+          loading ? (
+            <div className="space-y-4">
+              <InsightCardSkeleton />
+              <InsightCardSkeleton />
+              <InsightCardSkeleton />
+            </div>
+          ) : (
+            <CategoryInsights expenses={expenses} />
+          )
         ) : null}
       </div>
 
