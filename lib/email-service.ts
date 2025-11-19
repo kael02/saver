@@ -43,19 +43,19 @@ export class EmailService {
           }
 
           // Search for unread emails from trusted senders only
-          // Only emails from the last 30 days
-          const thirtyDaysAgo = new Date()
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-          const sinceDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '-')
+          // Only emails from the last 7 days
+          const sevenDaysAgo = new Date()
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+          const sinceDate = sevenDaysAgo.toISOString().split('T')[0].replace(/-/g, '-')
 
-          // IMAP search criteria: UNSEEN, from trusted senders, since 30 days ago
+          // IMAP search criteria: UNSEEN, from trusted senders, since 7 days ago
           const searchCriteria = [
             'UNSEEN',
             ['SINCE', sinceDate],
             ['OR', ...TRUSTED_SENDERS.map(sender => ['FROM', sender])]
           ]
 
-          console.log(`Searching for emails since: ${sinceDate}`)
+          console.log(`Searching for emails since: ${sinceDate} (last 7 days)`)
 
           imap.search(searchCriteria, (err, results) => {
             if (err) {
@@ -73,42 +73,56 @@ export class EmailService {
             console.log(`Found ${results.length} unread emails from trusted senders`)
             const fetch = imap.fetch(results, { bodies: '' })
 
+            // Track all parsing promises to ensure they complete before closing connection
+            const parsingPromises: Promise<void>[] = []
+
             fetch.on('message', (msg) => {
               msg.on('body', (stream) => {
-                simpleParser(stream as any, async (err, parsed) => {
-                  if (err) {
-                    console.error('Error parsing email:', err)
-                    return
-                  }
-
-                  // Double-check sender for security
-                  const from = parsed.from?.value?.[0]?.address?.toLowerCase() || ''
-                  const isTrustedSender = TRUSTED_SENDERS.some(
-                    sender => from === sender.toLowerCase()
-                  )
-
-                  if (!isTrustedSender) {
-                    console.warn(`Skipping email from untrusted sender: ${from}`)
-                    return
-                  }
-
-                  console.log(`Processing email from: ${from}`)
-
-                  const subject = parsed.subject || ''
-                  const body = parsed.text || parsed.html || ''
-
-                  // Try to parse the email (now async)
-                  try {
-                    const expense = await emailParser.parseEmail(subject, body)
-                    if (expense) {
-                      console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
-                      expenses.push(expense)
+                const parsingPromise = new Promise<void>((resolveMsg) => {
+                  simpleParser(stream as any, async (err, parsed) => {
+                    if (err) {
+                      console.error('Error parsing email:', err)
+                      resolveMsg()
+                      return
                     }
-                    // Silently skip emails that don't parse (pending orders, confirmations, etc.)
-                  } catch (parseError) {
-                    console.error('Error parsing email:', parseError)
-                  }
+
+                    // Double-check sender for security
+                    const from = parsed.from?.value?.[0]?.address?.toLowerCase() || ''
+                    const isTrustedSender = TRUSTED_SENDERS.some(
+                      sender => from === sender.toLowerCase()
+                    )
+
+                    if (!isTrustedSender) {
+                      console.warn(`Skipping email from untrusted sender: ${from}`)
+                      resolveMsg()
+                      return
+                    }
+
+                    console.log(`Processing email from: ${from}`)
+                    console.log(`Subject: ${parsed.subject}`)
+
+                    const subject = parsed.subject || ''
+                    const body = parsed.text || parsed.html || ''
+
+                    // Try to parse the email (now async)
+                    try {
+                      const expense = await emailParser.parseEmail(subject, body)
+                      if (expense) {
+                        console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
+                        expenses.push(expense)
+                      } else {
+                        console.log(`✗ Email parsing returned null (likely skipped or failed)`)
+                      }
+                      // Silently skip emails that don't parse (pending orders, confirmations, etc.)
+                    } catch (parseError) {
+                      console.error('Error parsing email:', parseError)
+                    }
+
+                    resolveMsg()
+                  })
                 })
+
+                parsingPromises.push(parsingPromise)
               })
             })
 
@@ -117,7 +131,13 @@ export class EmailService {
               reject(err)
             })
 
-            fetch.once('end', () => {
+            fetch.once('end', async () => {
+              console.log(`Waiting for ${parsingPromises.length} email(s) to finish parsing...`)
+
+              // Wait for all async parsing to complete
+              await Promise.all(parsingPromises)
+
+              console.log(`✓ All emails parsed. Found ${expenses.length} valid expense(s)`)
               imap.end()
             })
           })
