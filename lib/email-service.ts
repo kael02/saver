@@ -34,6 +34,7 @@ export class EmailService {
 
       const expenses: ParsedExpense[] = []
       const TRUSTED_SENDERS = ['info@card.vib.com.vn', 'no-reply@grab.com']
+      const processedUids: number[] = [] // Track UIDs to mark as read
 
       imap.once('ready', () => {
         imap.openBox('INBOX', false, (err, box) => {
@@ -76,7 +77,7 @@ export class EmailService {
             // Track all parsing promises to ensure they complete before closing connection
             const parsingPromises: Promise<void>[] = []
 
-            fetch.on('message', (msg) => {
+            fetch.on('message', (msg, seqno) => {
               msg.on('body', (stream) => {
                 const parsingPromise = new Promise<void>((resolveMsg) => {
                   simpleParser(stream as any, async (err, parsed) => {
@@ -110,12 +111,18 @@ export class EmailService {
                       if (expense) {
                         console.log(`✓ Parsed expense: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
                         expenses.push(expense)
+                        // Track UID for marking as read (avoid duplicates if AI fails)
+                        processedUids.push(seqno)
                       } else {
                         console.log(`✗ Email parsing returned null (likely skipped or failed)`)
+                        // Still mark as read to avoid re-processing promotional/pending emails
+                        processedUids.push(seqno)
                       }
                       // Silently skip emails that don't parse (pending orders, confirmations, etc.)
                     } catch (parseError) {
                       console.error('Error parsing email:', parseError)
+                      // Mark as read anyway to avoid infinite retry
+                      processedUids.push(seqno)
                     }
 
                     resolveMsg()
@@ -138,7 +145,22 @@ export class EmailService {
               await Promise.all(parsingPromises)
 
               console.log(`✓ All emails parsed. Found ${expenses.length} valid expense(s)`)
-              imap.end()
+
+              // Mark processed emails as read to avoid re-parsing
+              if (processedUids.length > 0) {
+                console.log(`Marking ${processedUids.length} email(s) as read...`)
+                imap.addFlags(processedUids, ['\\Seen'], (err) => {
+                  if (err) {
+                    console.error('Failed to mark emails as read:', err)
+                    // Don't fail the whole operation, just log it
+                  } else {
+                    console.log(`✓ Marked ${processedUids.length} email(s) as read`)
+                  }
+                  imap.end()
+                })
+              } else {
+                imap.end()
+              }
             })
           })
         })
