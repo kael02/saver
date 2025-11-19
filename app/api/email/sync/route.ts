@@ -36,8 +36,15 @@ export async function POST() {
     console.log(`Found ${expenses.length} total expenses from all accounts`)
 
     // Insert expenses into database
-    const insertPromises = expenses.map((expense) =>
-      supabase.from('expenses').insert([
+    const insertResults = []
+    let successful = 0
+    let failed = 0
+    let duplicates = 0
+
+    for (const expense of expenses) {
+      console.log(`Attempting to insert: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
+
+      const { data, error } = await supabase.from('expenses').insert([
         {
           card_number: expense.cardNumber,
           cardholder: expense.cardholder,
@@ -49,20 +56,40 @@ export async function POST() {
           source: expense.source,
           email_subject: expense.emailSubject,
         },
-      ])
-    )
+      ]).select()
 
-    const results = await Promise.allSettled(insertPromises)
+      if (error) {
+        console.error(`Failed to insert expense:`, error)
 
-    const successful = results.filter((r) => r.status === 'fulfilled').length
-    const failed = results.filter((r) => r.status === 'rejected').length
+        // Check if it's a duplicate (unique constraint violation)
+        if (error.code === '23505') {
+          console.log(`Duplicate expense detected (already exists in database)`)
+          duplicates++
+        } else {
+          failed++
+        }
+
+        insertResults.push({ success: false, error: error.message, expense })
+      } else {
+        console.log(`✓ Successfully inserted expense with ID: ${data[0]?.id}`)
+        successful++
+        insertResults.push({ success: true, data, expense })
+      }
+    }
+
+    console.log(`\n=== SYNC SUMMARY ===`)
+    console.log(`Total parsed: ${expenses.length}`)
+    console.log(`Successfully inserted: ${successful}`)
+    console.log(`Duplicates skipped: ${duplicates}`)
+    console.log(`Failed: ${failed}`)
 
     return NextResponse.json({
-      message: `Synced ${successful} expenses from ${emailServices.length} account(s)`,
+      message: `Synced ${successful} new expenses (${duplicates} duplicates skipped, ${failed} failed)`,
       count: successful,
+      duplicates,
       failed,
       accounts: emailServices.length,
-      expenses,
+      results: insertResults,
     })
   } catch (error) {
     console.error('Error syncing emails:', error)
