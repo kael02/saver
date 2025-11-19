@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getEmailServices } from '@/lib/email-service'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST() {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to sync emails.' },
+        { status: 401 }
+      )
+    }
+
     const emailServices = getEmailServices()
 
     // Check if any email accounts are configured
@@ -15,6 +27,7 @@ export async function POST() {
     }
 
     console.log(`Syncing from ${emailServices.length} email account(s)...`)
+    console.log(`Associating expenses with user: ${user.id} (${user.email})`)
 
     // Fetch expenses from all configured email accounts
     const fetchPromises = emailServices.map((service, index) => {
@@ -46,6 +59,7 @@ export async function POST() {
 
       const { data, error } = await supabaseAdmin.from('expenses').insert([
         {
+          user_id: user.id,
           card_number: expense.cardNumber,
           cardholder: expense.cardholder,
           transaction_type: expense.transactionType,
