@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -60,8 +61,12 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   }
 
   return (
-    <div
-      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} transition-shadow cursor-pointer active:scale-[0.98] transition-transform`}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]`}
       onClick={handleCardClick}
     >
         <div className="flex items-start justify-between mb-3 gap-2">
@@ -97,9 +102,15 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
         )}
 
         {/* Expanded content */}
-        {isExpanded && (
-          <div className="overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
-
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
               <div className="pt-3 border-t space-y-3">
                 {/* Details */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -175,8 +186,9 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                   )}
                 </div>
               </div>
-            </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex items-center justify-between gap-2 mt-3">
           <div className="flex gap-2">
@@ -229,6 +241,6 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             )}
           </div>
         </div>
-    </div>
+    </motion.div>
   )
 }
