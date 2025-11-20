@@ -11,6 +11,14 @@ export interface StatsData {
   totalExpenses: number
   totalCount: number
   averageExpense: number
+  // Legacy aliases for backwards compatibility
+  total: number
+  count: number
+  topMerchants?: Array<{
+    merchant: string
+    amount: number
+    count: number
+  }>
   categoryBreakdown: Array<{
     category: string
     total: number
