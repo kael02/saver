@@ -1,71 +1,51 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { formatCurrency } from '@/lib/utils'
 import { AlertCircle, CheckCircle, Edit2, Save, X } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
+import { useBudgets, useCreateBudget, useUpdateBudget } from '@/lib/hooks'
 
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Other']
-
-interface Budget {
-  id: string
-  category: string
-  amount: number
-  month: string
-}
 
 interface BudgetTrackerProps {
   expenses: Expense[]
 }
 
 export function BudgetTracker({ expenses }: BudgetTrackerProps) {
-  const [budgets, setBudgets] = useState<Budget[]>([])
-  const [editing, setEditing] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [loading, setLoading] = useState(true)
-
   const currentMonth = new Date().toISOString().slice(0, 7)
 
-  useEffect(() => {
-    fetchBudgets()
-  }, [])
+  // Fetch budgets using TanStack Query
+  const { data: budgets = [], isLoading: loading } = useBudgets({ month: currentMonth })
 
-  const fetchBudgets = async () => {
-    try {
-      const response = await fetch(`/api/budgets?month=${currentMonth}`)
-      const data = await response.json()
-      setBudgets(data.budgets || [])
-    } catch (error) {
-      console.error('Error fetching budgets:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Mutation hooks
+  const createBudgetMutation = useCreateBudget()
+  const updateBudgetMutation = useUpdateBudget()
+
+  const [editing, setEditing] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const saveBudget = async (category: string, amount: number) => {
     try {
       const existing = budgets.find((b) => b.category === category)
 
       if (existing) {
-        await fetch(`/api/budgets/${existing.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount }),
+        await updateBudgetMutation.mutateAsync({
+          id: existing.id,
+          updates: { amount },
         })
       } else {
-        await fetch('/api/budgets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category, amount, month: currentMonth }),
+        await createBudgetMutation.mutateAsync({
+          category,
+          amount,
+          month: currentMonth,
         })
       }
 
-      await fetchBudgets()
       setEditing(null)
     } catch (error) {
       console.error('Error saving budget:', error)
@@ -143,6 +123,7 @@ export function BudgetTracker({ expenses }: BudgetTrackerProps) {
                       onClick={() => {
                         saveBudget(category, parseFloat(editValue))
                       }}
+                      disabled={createBudgetMutation.isPending || updateBudgetMutation.isPending}
                     >
                       <Save className="h-4 w-4" />
                     </Button>

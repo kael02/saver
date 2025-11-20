@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/components/auth-provider'
+import { QueryProvider } from '@/components/query-provider'
 import { Toaster } from 'sonner'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
@@ -63,12 +64,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <ServiceWorkerRegistration />
-            {children}
-            <PWAInstallPrompt />
-            <Toaster position="top-center" richColors closeButton />
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <ServiceWorkerRegistration />
+              {children}
+              <PWAInstallPrompt />
+              <Toaster position="top-center" richColors closeButton />
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
