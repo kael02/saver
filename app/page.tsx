@@ -26,6 +26,15 @@ import { StatsCard } from '@/components/stats-card';
 import { Button } from '@/components/ui/button';
 import { WeeklySummary } from '@/components/weekly-summary';
 import { exportToCSV } from '@/lib/export';
+import {
+  useExpenses,
+  useStats,
+  useBudgets,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+  useEmailSync,
+} from '@/lib/hooks';
 import type { Expense } from '@/lib/supabase';
 import { formatCurrency, hapticFeedback } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -37,7 +46,7 @@ import {
   TrendingDown,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const QUICK_FILTERS = [
@@ -66,13 +75,25 @@ const VIEW_ORDER: Array<'expenses' | 'analytics' | 'budget' | 'insights'> = [
 ];
 
 export default function Home() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  // TanStack Query hooks for server state
+  const { data: expenses = [], isLoading: expensesLoading, refetch: refetchExpenses } = useExpenses();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useStats();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const { data: budgets = [], isLoading: budgetsLoading } = useBudgets({ month: currentMonth });
+
+  // Mutations
+  const createExpenseMutation = useCreateExpense();
+  const updateExpenseMutation = useUpdateExpense();
+  const deleteExpenseMutation = useDeleteExpense();
+  const emailSyncMutation = useEmailSync();
+
+  // Derived loading state
+  const loading = expensesLoading || statsLoading || budgetsLoading;
+
+  // Client-side state (UI and filtering)
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>();
-  const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>('');
   const [syncStatus, setSyncStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
@@ -95,24 +116,11 @@ export default function Home() {
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
-  const [budgets, setBudgets] = useState<any[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const touchStart = useRef(0);
   const [scrolled, setScrolled] = useState(false);
   const lastScrollY = useRef(0);
-
-  const fetchExpenses = async () => {
-    try {
-      const response = await fetch('/api/expenses');
-      const data = await response.json();
-      setExpenses(data.expenses || []);
-      applyFilters(data.expenses || [], searchQuery);
-    } catch (error) {
-      console.error('Error fetching expenses:', error);
-      toast.error('Failed to load expenses');
-    }
-  };
 
   const applyFilters = (
     expenseList: Expense[],
@@ -160,33 +168,9 @@ export default function Home() {
 
   useEffect(() => {
     applyFilters(expenses, searchQuery);
-  }, [quickFilter, categoryFilter, searchQuery]);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/stats');
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchBudgets = async () => {
-    try {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const response = await fetch(`/api/budgets?month=${currentMonth}`);
-      const data = await response.json();
-      setBudgets(data.budgets || []);
-    } catch (error) {
-      console.error('Error fetching budgets:', error);
-    }
-  };
+  }, [expenses, quickFilter, categoryFilter, searchQuery]);
 
   const getCategorySpent = (category: string) => {
-    const currentMonth = new Date().toISOString().slice(0, 7);
     const monthExpenses = expenses.filter((e) => {
       const expenseMonth = new Date(e.transaction_date)
         .toISOString()
@@ -208,10 +192,6 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchExpenses();
-    fetchStats();
-    fetchBudgets();
-
     // Check if should show onboarding
     const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
     if (!hasSeenOnboarding) {
@@ -253,16 +233,13 @@ export default function Home() {
 
     const index = expenses.findIndex((e) => e.id === id);
 
-    // Optimistic update
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
-    applyFilters(expenses.filter((e) => e.id !== id));
-    hapticFeedback('medium');
-
     // Store for undo
     setDeletedExpense({ expense: expenseToDelete, index });
 
-    // Show undo toast
-    toast.success('Expense deleted', {
+    hapticFeedback('medium');
+
+    // Show undo toast (suppress default mutation toast)
+    const toastId = toast.success('Expense deleted', {
       action: {
         label: 'Undo',
         onClick: () => handleUndoDelete(),
@@ -271,21 +248,23 @@ export default function Home() {
     });
 
     try {
-      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
-      await fetchStats();
+      // Use mutation without default toast
+      await deleteExpenseMutation.mutateAsync(id, {
+        onSuccess: () => {
+          // Suppress default toast - we're using our custom one
+        },
+        onError: () => {
+          // Suppress default toast
+        },
+      });
 
       // Clear undo after successful delete
       setTimeout(() => setDeletedExpense(null), 5000);
     } catch (error) {
-      // Rollback on error
+      // Rollback on error (mutation handles cache invalidation)
       console.error('Error deleting expense:', error);
       toast.error('Failed to delete expense');
-      if (expenseToDelete) {
-        const restoredExpenses = [...expenses];
-        restoredExpenses.splice(index, 0, expenseToDelete);
-        setExpenses(restoredExpenses);
-        applyFilters(restoredExpenses);
-      }
+      setDeletedExpense(null);
     }
   };
 
@@ -294,41 +273,31 @@ export default function Home() {
 
     hapticFeedback('light');
 
-    // Restore optimistically
-    const restoredExpenses = [...expenses];
-    restoredExpenses.splice(deletedExpense.index, 0, deletedExpense.expense);
-    setExpenses(restoredExpenses);
-    applyFilters(restoredExpenses);
-
     try {
-      // Re-create the expense
-      await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: deletedExpense.expense.amount,
-          merchant: deletedExpense.expense.merchant,
-          category: deletedExpense.expense.category,
-          notes: deletedExpense.expense.notes,
-          transactionDate: deletedExpense.expense.transaction_date,
-          cardNumber: deletedExpense.expense.card_number,
-          cardholder: deletedExpense.expense.cardholder,
-          transactionType: deletedExpense.expense.transaction_type,
-          currency: deletedExpense.expense.currency,
-          source: deletedExpense.expense.source,
-        }),
+      // Re-create the expense using mutation
+      await createExpenseMutation.mutateAsync({
+        amount: deletedExpense.expense.amount,
+        merchant: deletedExpense.expense.merchant,
+        category: deletedExpense.expense.category,
+        notes: deletedExpense.expense.notes,
+        transaction_date: deletedExpense.expense.transaction_date,
+        card_number: deletedExpense.expense.card_number,
+        cardholder: deletedExpense.expense.cardholder,
+        transaction_type: deletedExpense.expense.transaction_type,
+        currency: deletedExpense.expense.currency,
+        source: deletedExpense.expense.source,
+      }, {
+        onSuccess: () => {
+          toast.success('Expense restored');
+          setDeletedExpense(null);
+        },
+        onError: () => {
+          // Error already handled by mutation
+          setDeletedExpense(null);
+        },
       });
-
-      toast.success('Expense restored');
-      await fetchExpenses();
-      await fetchStats();
-      setDeletedExpense(null);
     } catch (error) {
       console.error('Error restoring expense:', error);
-      toast.error('Failed to restore expense');
-      const filteredExpenses = expenses.filter((e) => e.id !== deletedExpense.expense.id);
-      setExpenses(filteredExpenses);
-      applyFilters(filteredExpenses);
     }
   };
 
@@ -340,139 +309,104 @@ export default function Home() {
 
   const handleUpdateNotes = async (expense: Expense) => {
     try {
-      const response = await fetch(`/api/expenses/${expense.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await updateExpenseMutation.mutateAsync({
+        id: expense.id,
+        updates: {
           amount: expense.amount,
           merchant: expense.merchant,
           category: expense.category,
           notes: expense.notes,
-          transactionDate: expense.transaction_date,
-          cardNumber: expense.card_number,
+          transaction_date: expense.transaction_date,
+          card_number: expense.card_number,
           cardholder: expense.cardholder,
-          transactionType: expense.transaction_type,
+          transaction_type: expense.transaction_type,
           currency: expense.currency,
-        }),
+        },
+      }, {
+        onSuccess: () => {
+          toast.success('Notes updated');
+        },
+        onError: () => {
+          // Error already handled by mutation
+        },
       });
-
-      if (!response.ok) throw new Error('Failed to update notes');
-
-      await fetchExpenses();
-      toast.success('Notes updated');
     } catch (error) {
       console.error('Error updating notes:', error);
-      toast.error('Failed to update notes');
     }
   };
 
   const handleSubmit = async (data: any) => {
     hapticFeedback('medium');
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticExpense: Expense = {
-      id: editingExpense?.id || tempId,
-      amount: data.amount,
-      merchant: data.merchant,
-      category: data.category,
-      notes: data.notes,
-      transaction_date: data.transactionDate,
-      card_number: data.cardNumber,
-      cardholder: data.cardholder,
-      transaction_type: data.transactionType,
-      currency: data.currency,
-      updated_at: new Date().toISOString(),
-      source: editingExpense?.source || 'manual',
-      created_at: editingExpense?.created_at || new Date().toISOString(),
-    };
-
-    // Optimistic update
-    let updatedExpenses: Expense[];
-    if (editingExpense) {
-      updatedExpenses = expenses.map((e) => (e.id === editingExpense.id ? optimisticExpense : e));
-      setExpenses(updatedExpenses);
-    } else {
-      updatedExpenses = [optimisticExpense, ...expenses];
-      setExpenses(updatedExpenses);
-      celebrateSuccess(); // Celebrate first expense
-    }
-    applyFilters(updatedExpenses);
-
     setShowForm(false);
+    const previousEditingExpense = editingExpense;
     setEditingExpense(undefined);
 
-    toast.promise(
-      async () => {
-        const response = editingExpense
-          ? await fetch(`/api/expenses/${editingExpense.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data),
-            })
-          : await fetch('/api/expenses', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...data, source: 'manual' }),
-            });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to save expense');
-        }
-
-        await fetchExpenses();
-        await fetchStats();
-      },
-      {
-        loading: editingExpense ? 'Updating...' : 'Adding...',
-        success: editingExpense ? 'Expense updated!' : 'Expense added!',
-        error: (err) => {
-          // Rollback on error
-          let rolledBackExpenses: Expense[];
-          if (editingExpense) {
-            const original = expenses.find((e) => e.id === editingExpense.id);
-            if (original) {
-              rolledBackExpenses = expenses.map((e) => (e.id === editingExpense.id ? original : e));
-              setExpenses(rolledBackExpenses);
-              applyFilters(rolledBackExpenses);
-            }
-          } else {
-            rolledBackExpenses = expenses.filter((e) => e.id !== tempId);
-            setExpenses(rolledBackExpenses);
-            applyFilters(rolledBackExpenses);
-          }
-          return err.message || 'Failed to save expense';
-        },
+    try {
+      if (previousEditingExpense) {
+        // Update existing expense
+        await updateExpenseMutation.mutateAsync({
+          id: previousEditingExpense.id,
+          updates: data,
+        }, {
+          onSuccess: () => {
+            toast.success('Expense updated!');
+          },
+          onError: () => {
+            // Error already handled by mutation
+          },
+        });
+      } else {
+        // Create new expense
+        await createExpenseMutation.mutateAsync({
+          ...data,
+          source: 'manual',
+        }, {
+          onSuccess: () => {
+            toast.success('Expense added!');
+            celebrateSuccess(); // Celebrate first expense
+          },
+          onError: () => {
+            // Error already handled by mutation
+          },
+        });
       }
-    );
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      // Re-open form on error
+      setShowForm(true);
+      setEditingExpense(previousEditingExpense);
+    }
   };
 
   const handleSync = async () => {
-    setSyncing(true);
     setSyncStatus('loading');
     setSyncProgress('Connecting to email...');
     setSyncDetail('This may take a few moments');
     hapticFeedback('light');
 
     try {
-      const response = await fetch('/api/email/sync', { method: 'POST' });
-      const data = await response.json();
+      const data = await emailSyncMutation.mutateAsync(7, {
+        onSuccess: () => {
+          // Suppress default toast - we'll show custom ones
+        },
+        onError: () => {
+          // Suppress default toast
+        },
+      });
 
       setSyncProgress('Processing emails...');
-      setSyncDetail(`Found ${data.count || 0} new expense(s)`);
-
-      await fetchExpenses();
-      await fetchStats();
+      setSyncDetail(`Found ${data.newExpenses || 0} new expense(s)`);
 
       setLastSynced(new Date());
       setSyncStatus('success');
       setSyncProgress('Sync complete!');
-      setSyncDetail(`Added ${data.count || 0} new expense(s)`);
+      setSyncDetail(`Added ${data.newExpenses || 0} new expense(s)`);
 
       hapticFeedback('medium');
-      toast.success(`Synced ${data.count || 0} new expenses`);
+      toast.success(`Synced ${data.newExpenses || 0} new expenses`);
 
-      if (data.count > 0) {
+      if (data.newExpenses > 0) {
         celebrateSuccess();
       }
 
@@ -495,8 +429,6 @@ export default function Home() {
         setSyncProgress('');
         setSyncDetail('');
       }, 5000);
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -524,8 +456,8 @@ export default function Home() {
     if (pullDistance > 70 && !isRefreshing) {
       setIsRefreshing(true);
       hapticFeedback('medium');
-      await fetchExpenses();
-      await fetchStats();
+      await refetchExpenses();
+      await refetchStats();
       setIsRefreshing(false);
     }
     setPullDistance(0);
@@ -769,12 +701,12 @@ export default function Home() {
                 <Button
                   variant="outline"
                   onClick={handleSync}
-                  disabled={syncing}
+                  disabled={emailSyncMutation.isPending}
                   size="lg"
                   className="gap-2 ripple-effect min-h-touch-lg text-sm sm:text-base"
                 >
                   <RefreshCw
-                    className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`}
+                    className={`h-5 w-5 ${emailSyncMutation.isPending ? 'animate-spin' : ''}`}
                   />
                   Or Sync from Email
                 </Button>
@@ -909,14 +841,14 @@ export default function Home() {
           toast.success('Exported to CSV');
           hapticFeedback('light');
         }}
-        syncing={syncing}
+        syncing={emailSyncMutation.isPending}
       />
 
       {/* Bottom Navigation */}
       <BottomNavigation activeView={activeView} onViewChange={setActiveView} />
 
       {/* Network Status */}
-      <NetworkStatus syncing={syncing} lastSynced={lastSynced} />
+      <NetworkStatus syncing={emailSyncMutation.isPending} lastSynced={lastSynced} />
 
       {/* Expense Form Modal */}
       <AnimatePresence>

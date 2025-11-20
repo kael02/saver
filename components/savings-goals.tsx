@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,19 +9,20 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { formatCurrency } from '@/lib/utils'
 import { Plus, Edit2, Trash2, Save, X, Target } from 'lucide-react'
+import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '@/lib/hooks'
+import type { Tables } from '@/lib/supabase/database.types'
 
-interface SavingsGoal {
-  id: string
-  name: string
-  target_amount: number
-  current_amount: number
-  deadline: string | null
-  icon: string
-}
+type SavingsGoal = Tables<'savings_goals'>
 
 export function SavingsGoals() {
-  const [goals, setGoals] = useState<SavingsGoal[]>([])
-  const [loading, setLoading] = useState(true)
+  // Fetch goals using TanStack Query
+  const { data: goals = [], isLoading: loading } = useGoals()
+
+  // Mutation hooks
+  const createGoalMutation = useCreateGoal()
+  const updateGoalMutation = useUpdateGoal()
+  const deleteGoalMutation = useDeleteGoal()
+
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null)
   const [formData, setFormData] = useState({
@@ -34,56 +35,34 @@ export function SavingsGoals() {
 
   const GOAL_ICONS = ['🎯', '🏠', '✈️', '🚗', '💰', '🎓', '💍', '🎉']
 
-  useEffect(() => {
-    fetchGoals()
-  }, [])
-
-  const fetchGoals = async () => {
-    try {
-      const response = await fetch('/api/goals')
-      const data = await response.json()
-      setGoals(data.goals || [])
-    } catch (error) {
-      console.error('Error fetching goals:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     try {
       if (editingGoal) {
-        await fetch(`/api/goals/${editingGoal.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        await updateGoalMutation.mutateAsync({
+          id: editingGoal.id,
+          updates: {
             name: formData.name,
-            targetAmount: parseFloat(formData.targetAmount),
-            currentAmount: parseFloat(formData.currentAmount || '0'),
+            target_amount: parseFloat(formData.targetAmount),
+            current_amount: parseFloat(formData.currentAmount || '0'),
             deadline: formData.deadline || null,
             icon: formData.icon,
-          }),
+          },
         })
       } else {
-        await fetch('/api/goals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: formData.name,
-            targetAmount: parseFloat(formData.targetAmount),
-            currentAmount: parseFloat(formData.currentAmount || '0'),
-            deadline: formData.deadline || null,
-            icon: formData.icon,
-          }),
+        await createGoalMutation.mutateAsync({
+          name: formData.name,
+          target_amount: parseFloat(formData.targetAmount),
+          current_amount: parseFloat(formData.currentAmount || '0'),
+          deadline: formData.deadline || null,
+          icon: formData.icon,
         })
       }
 
       setFormData({ name: '', targetAmount: '', currentAmount: '', deadline: '', icon: '🎯' })
       setShowForm(false)
       setEditingGoal(null)
-      await fetchGoals()
     } catch (error) {
       console.error('Error saving goal:', error)
     }
@@ -94,9 +73,9 @@ export function SavingsGoals() {
     setFormData({
       name: goal.name,
       targetAmount: goal.target_amount.toString(),
-      currentAmount: goal.current_amount.toString(),
+      currentAmount: (goal.current_amount || 0).toString(),
       deadline: goal.deadline || '',
-      icon: goal.icon,
+      icon: goal.icon || '🎯',
     })
     setShowForm(true)
   }
@@ -105,8 +84,7 @@ export function SavingsGoals() {
     if (!confirm('Delete this goal?')) return
 
     try {
-      await fetch(`/api/goals/${id}`, { method: 'DELETE' })
-      await fetchGoals()
+      await deleteGoalMutation.mutateAsync(id)
     } catch (error) {
       console.error('Error deleting goal:', error)
     }
@@ -114,14 +92,12 @@ export function SavingsGoals() {
 
   const handleAddProgress = async (goal: SavingsGoal, amount: number) => {
     try {
-      await fetch(`/api/goals/${goal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentAmount: goal.current_amount + amount,
-        }),
+      await updateGoalMutation.mutateAsync({
+        id: goal.id,
+        updates: {
+          current_amount: (goal.current_amount || 0) + amount,
+        },
       })
-      await fetchGoals()
     } catch (error) {
       console.error('Error updating progress:', error)
     }
@@ -228,7 +204,11 @@ export function SavingsGoals() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={createGoalMutation.isPending || updateGoalMutation.isPending}
+                  >
                     <Save className="h-4 w-4 mr-2" />
                     {editingGoal ? 'Update' : 'Create'}
                   </Button>
@@ -261,8 +241,8 @@ export function SavingsGoals() {
       ) : (
         <div className="space-y-4">
           {goals.map((goal) => {
-            const progress = (goal.current_amount / goal.target_amount) * 100
-            const remaining = goal.target_amount - goal.current_amount
+            const progress = ((goal.current_amount || 0) / goal.target_amount) * 100
+            const remaining = goal.target_amount - (goal.current_amount || 0)
             const daysUntilDeadline = goal.deadline
               ? Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
               : null
@@ -277,11 +257,11 @@ export function SavingsGoals() {
                 <Card className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl">{goal.icon}</span>
+                      <span className="text-3xl">{goal.icon || '🎯'}</span>
                       <div>
                         <h3 className="font-semibold text-lg">{goal.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(goal.current_amount, 'VND')} of{' '}
+                          {formatCurrency(goal.current_amount || 0, 'VND')} of{' '}
                           {formatCurrency(goal.target_amount, 'VND')}
                         </p>
                       </div>
@@ -300,6 +280,7 @@ export function SavingsGoals() {
                         size="icon"
                         onClick={() => handleDelete(goal.id)}
                         className="h-8 w-8 text-destructive"
+                        disabled={deleteGoalMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -336,6 +317,7 @@ export function SavingsGoals() {
                         size="sm"
                         onClick={() => handleAddProgress(goal, amount)}
                         className="flex-1"
+                        disabled={updateGoalMutation.isPending}
                       >
                         +{(amount / 1000).toFixed(0)}k
                       </Button>
