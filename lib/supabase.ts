@@ -23,20 +23,20 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 
 export type Expense = {
   id: string
-  user_id?: string  // Added for authentication
-  card_number: string
-  cardholder: string
-  transaction_type: string
+  user_id?: string | null  // Added for authentication
+  card_number: string | null
+  cardholder: string | null
+  transaction_type: string | null
   amount: number
   currency: string
   transaction_date: string
   merchant: string
-  category?: string
-  notes?: string
-  source: 'manual' | 'email'
-  email_subject?: string
-  created_at: string
-  updated_at: string
+  category?: string | null
+  notes?: string | null
+  source: string
+  email_subject?: string | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 export type Database = {
