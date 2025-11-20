@@ -24,6 +24,48 @@ export class EmailParser {
   }
 
   /**
+   * Sanitize email content before sending to AI
+   * Removes personal info and unnecessary marketing content
+   */
+  private sanitizeForAI(text: string): string {
+    let sanitized = text
+
+    // Remove email addresses (replace with placeholder)
+    sanitized = sanitized.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
+
+    // Remove phone numbers (various formats)
+    sanitized = sanitized.replace(/(\+?84|0)?[0-9]{9,11}/g, '[PHONE]')
+
+    // Remove credit card numbers (partial or full, keep last 4 digits pattern like 5138***5758)
+    sanitized = sanitized.replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, '[CARD]')
+
+    // Remove common footer/unsubscribe sections
+    const footerPatterns = [
+      /Unsubscribe.*$/is,
+      /Click here to unsubscribe.*$/is,
+      /You received this email because.*$/is,
+      /To stop receiving these emails.*$/is,
+      /Privacy Policy.*$/is,
+      /Terms.*Conditions.*$/is,
+      /© .*\d{4}.*$/is,
+      /Follow us on.*$/is,
+      /Download.*app.*$/is,
+    ]
+
+    footerPatterns.forEach(pattern => {
+      sanitized = sanitized.replace(pattern, '')
+    })
+
+    // Remove URLs (keep only the domain for context if needed)
+    sanitized = sanitized.replace(/https?:\/\/[^\s]+/g, '[LINK]')
+
+    // Remove excessive whitespace
+    sanitized = sanitized.replace(/\s+/g, ' ').trim()
+
+    return sanitized
+  }
+
+  /**
    * Parse email using OpenRouter AI (more reliable than regex)
    */
   private async parseWithAI(subject: string, body: string): Promise<ParsedExpense | null> {
@@ -37,14 +79,23 @@ export class EmailParser {
     try {
       const cleanBody = this.stripHtml(body)
 
-      // Truncate to avoid token limits (keep first 2000 chars which should contain transaction details)
-      const truncatedBody = cleanBody.substring(0, 2000)
+      // Sanitize to remove PII and unnecessary content
+      const sanitizedBody = this.sanitizeForAI(cleanBody)
+      const sanitizedSubject = this.sanitizeForAI(subject)
+
+      // Truncate to reasonable length (first 1000 chars after sanitization)
+      const truncatedBody = sanitizedBody.substring(0, 1000)
+
+      console.log(`Sanitized email: ${truncatedBody.length} chars (original: ${cleanBody.length} chars)`)
+
 
       const prompt = `You are an email parser that extracts transaction information from emails.
 Parse the following email and extract the transaction details in JSON format.
 
-Email Subject: ${subject}
+Email Subject: ${sanitizedSubject}
 Email Body: ${truncatedBody}
+
+Note: Personal info has been sanitized ([EMAIL], [PHONE], [CARD], [LINK] are placeholders).
 
 Extract the following information:
 - amount (number, no currency symbols or commas)
@@ -64,6 +115,7 @@ IMPORTANT RULES:
 4. Remove all formatting from amount (no commas, dots, or currency symbols)
 5. For Grab emails, look for "Đặt từ" or "From" to find the merchant name
 6. Skip pending orders or order confirmations - only parse completed transactions
+7. Ignore placeholder values like [EMAIL], [PHONE], [CARD], [LINK]
 
 Return ONLY valid JSON in this exact format (no markdown, no explanations):
 {
