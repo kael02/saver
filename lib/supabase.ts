@@ -39,6 +39,54 @@ export type Expense = {
   updated_at: string | null
 }
 
+export type Meal = {
+  id: string
+  name: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  meal_time: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
+  meal_date: string
+  source: 'manual' | 'llm' | 'usda' | 'saved' | 'email'
+  confidence?: 'high' | 'medium' | 'low' | null
+  expense_id?: string | null
+  notes?: string | null
+  llm_reasoning?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SavedFood = {
+  id: string
+  name: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  source: 'manual' | 'llm' | 'usda'
+  is_favorite: boolean
+  use_count: number
+  last_used_at?: string | null
+  notes?: string | null
+  portion_description?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CalorieGoal = {
+  id: string
+  daily_calories: number
+  protein_target?: number | null
+  carbs_target?: number | null
+  fat_target?: number | null
+  start_date: string
+  end_date?: string | null
+  goal_type: 'weight_loss' | 'weight_gain' | 'maintenance' | 'custom'
+  notes?: string | null
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -46,6 +94,21 @@ export type Database = {
         Row: Expense
         Insert: Omit<Expense, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<Expense, 'id' | 'created_at' | 'updated_at'>>
+      }
+      meals: {
+        Row: Meal
+        Insert: Omit<Meal, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Meal, 'id' | 'created_at' | 'updated_at'>>
+      }
+      saved_foods: {
+        Row: SavedFood
+        Insert: Omit<SavedFood, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<SavedFood, 'id' | 'created_at' | 'updated_at'>>
+      }
+      calorie_goals: {
+        Row: CalorieGoal
+        Insert: Omit<CalorieGoal, 'id' | 'created_at'>
+        Update: Partial<Omit<CalorieGoal, 'id' | 'created_at'>>
       }
     }
   }

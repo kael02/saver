@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getEmailServices } from '@/lib/email-service'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
+import { calorieEstimator } from '@/lib/calorie-estimator'
 
 export async function POST() {
   try {
@@ -88,6 +89,58 @@ export async function POST() {
         console.log(`✓ Successfully inserted expense with ID: ${data[0]?.id}`)
         successful++
         insertResults.push({ success: true, data, expense })
+
+        // Auto-create meal entry for GrabFood orders
+        if (expense.transactionType?.toLowerCase().includes('grabfood')) {
+          console.log(`🍔 Detected GrabFood order, estimating calories...`)
+          try {
+            // Estimate calories for this meal
+            const mealDescription = `${expense.merchant}`
+            const estimate = await calorieEstimator.estimate(mealDescription, {
+              additionalInfo: `GrabFood order from ${expense.merchant}`,
+            })
+
+            // Determine meal time based on transaction time
+            const transactionDate = new Date(expense.transactionDate)
+            const hour = transactionDate.getHours()
+            let mealTime: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other' = 'other'
+
+            if (hour >= 6 && hour < 11) {
+              mealTime = 'breakfast'
+            } else if (hour >= 11 && hour < 16) {
+              mealTime = 'lunch'
+            } else if (hour >= 16 && hour < 22) {
+              mealTime = 'dinner'
+            } else {
+              mealTime = 'snack'
+            }
+
+            // Create meal entry linked to expense
+            const { error: mealError } = await supabaseAdmin.from('meals').insert({
+              name: mealDescription,
+              calories: estimate.calories,
+              protein: estimate.protein,
+              carbs: estimate.carbs,
+              fat: estimate.fat,
+              meal_time: mealTime,
+              meal_date: expense.transactionDate,
+              source: 'email',
+              confidence: estimate.confidence,
+              expense_id: data[0]?.id,
+              llm_reasoning: estimate.reasoning,
+              notes: `Auto-tracked from GrabFood order`,
+            })
+
+            if (mealError) {
+              console.error(`Failed to create meal entry:`, mealError)
+            } else {
+              console.log(`✓ Created meal entry: ${estimate.calories} cal from ${expense.merchant}`)
+            }
+          } catch (mealEstimateError) {
+            console.error(`Error estimating calories for GrabFood:`, mealEstimateError)
+            // Don't fail the whole sync if calorie estimation fails
+          }
+        }
       }
     }
 
