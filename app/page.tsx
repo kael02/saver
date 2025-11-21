@@ -653,30 +653,18 @@ export default function Home() {
 
       {/* Stats Cards */}
       {loading ? (
-        <div className="px-4 mt-4 mb-4 space-y-3">
-          <StatsCardSkeleton />
+        <div className="px-4 mt-4 mb-4">
           <StatsCardSkeleton />
         </div>
       ) : (
         stats && (
-          <div className="px-4 mt-4 mb-4 space-y-3">
+          <div className="px-4 mt-4 mb-4">
             <StatsCard
               title="Total Spent"
               value={formatCurrency(stats.total, 'VND')}
               icon={Wallet}
               description={`${stats.count} transactions`}
               index={0}
-            />
-            <StatsCard
-              title="Top Merchant"
-              value={stats.topMerchants?.[0]?.merchant || 'N/A'}
-              icon={TrendingDown}
-              description={
-                stats.topMerchants?.[0]
-                  ? formatCurrency(stats.topMerchants[0].amount, 'VND')
-                  : 'No data yet'
-              }
-              index={1}
             />
           </div>
         )

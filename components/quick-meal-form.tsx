@@ -70,12 +70,12 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
   }
 
   return (
-    <Card className="frosted-card">
-      <CardContent className="p-4">
-        <form onSubmit={handleQuickLog} className="space-y-3">
-          <div className="flex items-center gap-2 mb-3">
+    <Card className="ios-card">
+      <CardContent className="p-5">
+        <form onSubmit={handleQuickLog} className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
             <Utensils className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold">Quick Meal Log</h3>
+            <h3 className="ios-headline">Quick Meal Log</h3>
           </div>
 
           {/* Meal name */}
@@ -85,11 +85,11 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
               placeholder="What did you eat? (e.g., Phở bò)"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-base"
+              className="ios-body min-h-touch"
               disabled={isEstimating}
             />
             {!isManual && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <p className="ios-caption text-muted-foreground mt-2 flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 AI will estimate calories for you
               </p>
@@ -98,7 +98,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
 
           {/* Meal time */}
           <Select value={mealTime} onValueChange={setMealTime} disabled={isEstimating}>
-            <SelectTrigger>
+            <SelectTrigger className="min-h-touch">
               <SelectValue placeholder="Meal time" />
             </SelectTrigger>
             <SelectContent>
@@ -119,6 +119,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
                 value={manualCalories}
                 onChange={(e) => setManualCalories(e.target.value)}
                 disabled={isEstimating}
+                className="ios-body min-h-touch"
               />
             </div>
           )}
@@ -127,7 +128,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
           <div className="flex gap-2">
             <Button
               type="submit"
-              className="flex-1"
+              className="flex-1 ios-press min-h-touch"
               disabled={isEstimating || !name.trim()}
             >
               {isEstimating ? (
@@ -146,9 +147,9 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setIsManual(!isManual)}
               disabled={isEstimating}
+              className="ios-press min-h-touch px-4"
             >
               {isManual ? 'AI Mode' : 'Manual'}
             </Button>
