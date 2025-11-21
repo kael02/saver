@@ -252,7 +252,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
               </div>
 
               {/* Notes section */}
-              <div className="pt-2 border-t ios-separator">
+              <div className="pt-2">
                 <label className="ios-caption text-muted-foreground mb-2 block uppercase tracking-wide">
                   Notes
                 </label>
@@ -273,7 +273,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           e.stopPropagation()
                           handleSaveNotes()
                         }}
-                        className="flex-1 ios-press min-h-touch"
+                        className="flex-1 ios-press min-h-[44px]"
                       >
                         Save
                       </Button>
@@ -285,7 +285,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           setIsEditing(false)
                           setEditedNotes(expense.notes || '')
                         }}
-                        className="flex-1 ios-press min-h-touch"
+                        className="flex-1 ios-press min-h-[44px]"
                       >
                         Cancel
                       </Button>
@@ -297,7 +297,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                       e.stopPropagation()
                       setIsEditing(true)
                     }}
-                    className="ios-body text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg cursor-text min-h-[64px] ios-touch"
+                    className="ios-body text-sm text-muted-foreground p-3 rounded-lg cursor-text min-h-[64px] ios-touch border border-muted"
                   >
                     {expense.notes || 'Tap to add notes...'}
                   </div>
@@ -309,11 +309,12 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                 {onEdit && (
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleEdit()
                     }}
-                    className="flex-1 ios-press min-h-touch gap-2"
+                    className="flex-1 ios-press min-h-[44px] gap-1.5"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
@@ -322,11 +323,12 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                 {onDelete && (
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDeleteClick()
                     }}
-                    className="flex-1 ios-press min-h-touch gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="flex-1 ios-press min-h-[44px] gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
