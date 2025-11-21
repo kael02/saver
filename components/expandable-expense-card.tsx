@@ -305,7 +305,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-1.5 pt-2">
                 {onEdit && (
                   <Button
                     variant="outline"
@@ -314,7 +314,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                       e.stopPropagation()
                       handleEdit()
                     }}
-                    className="flex-1 ios-press h-10 text-sm px-3"
+                    className="flex-1 ios-press h-10 text-sm px-2"
                   >
                     <Edit className="w-4 h-4 mr-1.5" />
                     Edit
@@ -328,7 +328,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                       e.stopPropagation()
                       handleDeleteClick()
                     }}
-                    className="flex-1 ios-press h-10 text-sm px-3 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="flex-1 ios-press h-10 text-sm px-2 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
                     <Trash2 className="w-4 h-4 mr-1.5" />
                     Delete
