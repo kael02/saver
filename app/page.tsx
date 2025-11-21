@@ -4,8 +4,12 @@ import { AnalyticsCharts } from '@/components/analytics-charts';
 import { AnimatedCounter } from '@/components/animated-counter';
 import { BottomNavigation } from '@/components/bottom-navigation';
 import { BudgetTracker } from '@/components/budget-tracker';
+import { CalorieTracker } from '@/components/calorie-tracker';
 import { CategoryInsights } from '@/components/category-insights';
 import { celebrateSuccess } from '@/components/confetti';
+import { MealList } from '@/components/meal-list';
+import { NutritionCharts } from '@/components/nutrition-charts';
+import { QuickMealForm } from '@/components/quick-meal-form';
 import { ExpandableExpenseCard } from '@/components/expandable-expense-card';
 import { FloatingActionMenu } from '@/components/floating-action-menu';
 import { NetworkStatus } from '@/components/network-status';
@@ -101,7 +105,7 @@ export default function Home() {
   const [syncDetail, setSyncDetail] = useState<string>('');
   const [showAllExpenses, setShowAllExpenses] = useState(false);
   const [activeView, setActiveView] = useState<
-    'expenses' | 'analytics' | 'budget' | 'goals' | 'summary' | 'insights'
+    'expenses' | 'analytics' | 'budget' | 'goals' | 'summary' | 'insights' | 'calories'
   >('expenses');
   const [quickFilter, setQuickFilter] = useState<
     'all' | 'today' | 'week' | 'month'
@@ -121,6 +125,11 @@ export default function Home() {
   const touchStart = useRef(0);
   const [scrolled, setScrolled] = useState(false);
   const lastScrollY = useRef(0);
+
+  // Calorie tracking state
+  const [meals, setMeals] = useState<any[]>([]);
+  const [calorieStats, setCalorieStats] = useState<any>(null);
+  const [loadingMeals, setLoadingMeals] = useState(false);
 
   const applyFilters = (
     expenseList: Expense[],
@@ -226,6 +235,34 @@ export default function Home() {
       }
     };
   }, []);
+
+  // Fetch meals when calories view is active
+  const fetchMeals = async () => {
+    setLoadingMeals(true);
+    try {
+      // Fetch last 30 days of meals
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const response = await fetch(`/api/meals?startDate=${startDate}&limit=100`);
+      const data = await response.json();
+      setMeals(data.meals || []);
+
+      // Fetch stats
+      const statsResponse = await fetch(`/api/calorie-stats?startDate=${startDate}`);
+      const statsData = await statsResponse.json();
+      setCalorieStats(statsData);
+    } catch (error) {
+      console.error('Error fetching meals:', error);
+      toast.error('Failed to load meals');
+    } finally {
+      setLoadingMeals(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'calories') {
+      fetchMeals();
+    }
+  }, [activeView]);
 
   const handleDelete = async (id: string) => {
     const expenseToDelete = expenses.find((e) => e.id === id);
@@ -822,6 +859,36 @@ export default function Home() {
             </div>
           ) : (
             <CategoryInsights expenses={expenses} />
+          )
+        ) : activeView === 'calories' ? (
+          loadingMeals ? (
+            <div className="space-y-4">
+              <InsightCardSkeleton />
+              <InsightCardSkeleton />
+              <InsightCardSkeleton />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Quick meal form */}
+              <QuickMealForm onMealAdded={fetchMeals} />
+
+              {/* Daily calorie tracker */}
+              <CalorieTracker key={meals.length} />
+
+              {/* Meal list */}
+              <div>
+                <h2 className="text-lg font-semibold mb-3">Recent Meals</h2>
+                <MealList meals={meals} onMealDeleted={fetchMeals} />
+              </div>
+
+              {/* Nutrition charts */}
+              {calorieStats && calorieStats.mealCount > 0 && (
+                <div>
+                  <h2 className="text-lg font-semibold mb-3">Nutrition Analytics</h2>
+                  <NutritionCharts stats={calorieStats} />
+                </div>
+              )}
+            </div>
           )
         ) : null}
       </div>
