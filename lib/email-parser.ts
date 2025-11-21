@@ -130,26 +130,30 @@ Return ONLY valid JSON in this exact format (no markdown, no explanations):
 If this email is NOT a completed transaction (e.g., pending order, confirmation email, promotional email), return:
 {"skip": true}`
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-          'X-Title': 'Expense Tracker Email Parser',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free', // Fast and free model
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1, // Low temperature for consistent parsing
-          max_tokens: 500,
-        }),
-      })
+      const response = await fetch(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer':
+              process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+            'X-Title': 'Expense Tracker Email Parser',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash', // Fast and free model
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.1, // Low temperature for consistent parsing
+            max_tokens: 500,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text()

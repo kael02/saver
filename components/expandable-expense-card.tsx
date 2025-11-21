@@ -1,10 +1,5 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,16 +9,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { formatCurrency, formatDate, getCategoryColor, hapticFeedback } from '@/lib/utils'
-import { Trash2, Edit, Mail, ChevronRight, Clock, CreditCard, User, Calendar, AlertTriangle } from 'lucide-react'
-import type { Expense } from '@/lib/supabase'
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import type { Expense } from '@/lib/supabase';
+import {
+  formatCurrency,
+  formatDate,
+  getCategoryColor,
+  hapticFeedback,
+} from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  Calendar,
+  ChevronRight,
+  Clock,
+  Edit,
+  Mail,
+  Trash2,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ExpandableExpenseCardProps {
-  expense: Expense
-  onDelete?: (id: string) => void
-  onEdit?: (expense: Expense) => void
-  onUpdate?: (expense: Expense) => void
+  expense: Expense;
+  onDelete?: (id: string) => void;
+  onEdit?: (expense: Expense) => void;
+  onUpdate?: (expense: Expense) => void;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -34,69 +46,74 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Bills: '💡',
   Health: '🏥',
   Other: '📦',
-}
+};
 
-export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: ExpandableExpenseCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedNotes, setEditedNotes] = useState(expense.notes || '')
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [contentHeight, setContentHeight] = useState(0)
-  const contentRef = useRef<HTMLDivElement>(null)
+export function ExpandableExpenseCard({
+  expense,
+  onDelete,
+  onEdit,
+  onUpdate,
+}: ExpandableExpenseCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedNotes, setEditedNotes] = useState(expense.notes || '');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const categoryColors = getCategoryColor(expense.category || 'Other')
+  const categoryColors = getCategoryColor(expense.category || 'Other');
 
   // Use ResizeObserver for automatic height measurement
   useEffect(() => {
-    if (!contentRef.current) return
+    if (!contentRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContentHeight(entry.contentRect.height)
+        setContentHeight(entry.contentRect.height + 20);
       }
-    })
+    });
 
     if (isExpanded) {
-      resizeObserver.observe(contentRef.current)
+      resizeObserver.observe(contentRef.current);
     }
 
     return () => {
-      resizeObserver.disconnect()
-    }
-  }, [isExpanded])
+      resizeObserver.disconnect();
+    };
+  }, [isExpanded]);
 
   const handleDeleteClick = () => {
-    hapticFeedback('light')
-    setShowDeleteDialog(true)
-  }
+    hapticFeedback('light');
+    setShowDeleteDialog(true);
+  };
 
   const handleConfirmDelete = () => {
     if (onDelete) {
-      hapticFeedback('heavy')
-      onDelete(expense.id)
+      hapticFeedback('heavy');
+      onDelete(expense.id);
     }
-    setShowDeleteDialog(false)
-  }
+    setShowDeleteDialog(false);
+  };
 
   const handleEdit = () => {
     if (onEdit) {
-      hapticFeedback('light')
-      onEdit(expense)
+      hapticFeedback('light');
+      onEdit(expense);
     }
-  }
+  };
 
   const handleCardClick = () => {
-    hapticFeedback('light')
-    setIsExpanded(!isExpanded)
-  }
+    hapticFeedback('light');
+    setIsExpanded(!isExpanded);
+  };
 
   const handleSaveNotes = () => {
     if (onUpdate) {
-      onUpdate({ ...expense, notes: editedNotes })
+      onUpdate({ ...expense, notes: editedNotes });
     }
-    setIsEditing(false)
-    hapticFeedback('medium')
-  }
+    setIsEditing(false);
+    hapticFeedback('medium');
+  };
 
   return (
     <motion.div
@@ -105,7 +122,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{
         duration: 0.25,
-        ease: [0.175, 0.885, 0.32, 1.275]
+        ease: [0.175, 0.885, 0.32, 1.275],
       }}
       className="ios-card overflow-hidden"
     >
@@ -169,19 +186,16 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             initial={{ height: 0, opacity: 0 }}
             animate={{
               height: contentHeight > 0 ? contentHeight : 'auto',
-              opacity: 1
+              opacity: 1,
             }}
             exit={{ height: 0, opacity: 0 }}
             transition={{
               duration: 0.3,
-              ease: [0.4, 0, 0.2, 1]
+              ease: [0.4, 0, 0.2, 1],
             }}
             style={{ overflow: 'hidden' }}
           >
-            <div
-              ref={contentRef}
-              className="px-4 pb-4 pt-3 space-y-4"
-            >
+            <div ref={contentRef} className="px-4 pb-4 pt-2 space-y-4">
               {/* Details section */}
               <div className="space-y-2.5">
                 {/* Date & Time */}
@@ -191,11 +205,14 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                     <span className="ios-body text-sm">Date</span>
                   </div>
                   <span className="ios-body text-sm">
-                    {new Date(expense.transaction_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {new Date(expense.transaction_date).toLocaleDateString(
+                      'en-US',
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }
+                    )}
                   </span>
                 </div>
 
@@ -205,40 +222,28 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                     <span className="ios-body text-sm">Time</span>
                   </div>
                   <span className="ios-body text-sm">
-                    {new Date(expense.transaction_date).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
+                    {new Date(expense.transaction_date).toLocaleTimeString(
+                      'en-US',
+                      {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      }
+                    )}
                   </span>
                 </div>
 
-                {/* Card info */}
-                {expense.card_number && (
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="ios-body text-sm">Card</span>
-                    </div>
-                    <span className="ios-body text-sm">•••• {expense.card_number.slice(-4)}</span>
-                  </div>
-                )}
-
-                {/* Cardholder */}
-                {expense.cardholder && (
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span className="ios-body text-sm">Cardholder</span>
-                    </div>
-                    <span className="ios-body text-sm">{expense.cardholder}</span>
-                  </div>
-                )}
-
                 {/* Source badge */}
                 <div className="flex items-center justify-between py-2">
-                  <span className="ios-body text-sm text-muted-foreground">Source</span>
-                  <Badge variant={expense.source === 'email' ? 'default' : 'secondary'} className="text-xs">
+                  <span className="ios-body text-sm text-muted-foreground">
+                    Source
+                  </span>
+                  <Badge
+                    variant={
+                      expense.source === 'email' ? 'default' : 'secondary'
+                    }
+                    className="text-xs"
+                  >
                     {expense.source === 'email' ? (
                       <>
                         <Mail className="w-3 h-3 mr-1" />
@@ -251,59 +256,6 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                 </div>
               </div>
 
-              {/* Notes section */}
-              <div className="pt-2">
-                <label className="ios-caption text-muted-foreground mb-2 block uppercase tracking-wide">
-                  Notes
-                </label>
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <Textarea
-                      value={editedNotes}
-                      onChange={(e) => setEditedNotes(e.target.value)}
-                      placeholder="Add notes..."
-                      className="ios-body text-sm resize-none border-muted"
-                      rows={3}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSaveNotes()
-                        }}
-                        className="flex-1 ios-press h-10 text-sm px-3"
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setIsEditing(false)
-                          setEditedNotes(expense.notes || '')
-                        }}
-                        className="flex-1 ios-press h-10 text-sm px-3"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setIsEditing(true)
-                    }}
-                    className="ios-body text-sm text-muted-foreground p-3 rounded-lg cursor-text min-h-[64px] ios-touch border border-muted"
-                  >
-                    {expense.notes || 'Tap to add notes...'}
-                  </div>
-                )}
-              </div>
-
               {/* Action buttons */}
               <div className="flex gap-1.5 pt-2">
                 {onEdit && (
@@ -311,8 +263,8 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleEdit()
+                      e.stopPropagation();
+                      handleEdit();
                     }}
                     className="flex-1 ios-press h-10 text-sm px-2"
                   >
@@ -325,8 +277,8 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteClick()
+                      e.stopPropagation();
+                      handleDeleteClick();
                     }}
                     className="flex-1 ios-press h-10 text-sm px-2 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
@@ -342,15 +294,23 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="ios-card">
+        <AlertDialogContent
+          onClick={(e) => e.stopPropagation()}
+          className="ios-card"
+        >
           <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
               <AlertTriangle className="h-7 w-7 text-destructive" />
             </div>
-            <AlertDialogTitle className="text-center ios-title">Delete Expense?</AlertDialogTitle>
+            <AlertDialogTitle className="text-center ios-title">
+              Delete Expense?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-center ios-body text-muted-foreground">
-              Are you sure you want to delete this expense from <span className="font-semibold text-foreground">{expense.merchant}</span>?
-              This action cannot be undone.
+              Are you sure you want to delete this expense from{' '}
+              <span className="font-semibold text-foreground">
+                {expense.merchant}
+              </span>
+              ? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
@@ -370,5 +330,5 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
         </AlertDialogContent>
       </AlertDialog>
     </motion.div>
-  )
+  );
 }
