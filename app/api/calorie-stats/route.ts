@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 // GET /api/calorie-stats - Get calorie statistics
 export async function GET(request: Request) {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to view calorie stats.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -14,10 +26,11 @@ export async function GET(request: Request) {
       startDate ||
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-    // Fetch meals in date range
+    // Fetch meals in date range FOR THIS USER ONLY
     const { data: meals, error } = await supabaseAdmin
       .from('meals')
       .select('*')
+      .eq('user_id', user.id)
       .gte('meal_date', start)
       .lte('meal_date', end)
       .order('meal_date', { ascending: true })

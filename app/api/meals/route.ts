@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { calorieEstimator } from '@/lib/calorie-estimator'
 
 // GET /api/meals - List meals with filters
 export async function GET(request: Request) {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to view meals.' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -15,6 +27,7 @@ export async function GET(request: Request) {
     let query = supabaseAdmin
       .from('meals')
       .select('*, expenses(*)', { count: 'exact' })
+      .eq('user_id', user.id)
       .order('meal_date', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -52,6 +65,17 @@ export async function GET(request: Request) {
 // POST /api/meals - Create new meal (with optional LLM estimation)
 export async function POST(request: Request) {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to create meals.' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const {
       name,
@@ -76,6 +100,7 @@ export async function POST(request: Request) {
     }
 
     let mealData: any = {
+      user_id: user.id,
       name,
       meal_time: meal_time || 'other',
       meal_date,
