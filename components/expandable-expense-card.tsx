@@ -273,7 +273,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           e.stopPropagation()
                           handleSaveNotes()
                         }}
-                        className="flex-1 ios-press min-h-[44px]"
+                        className="flex-1 ios-press h-10 text-sm px-3"
                       >
                         Save
                       </Button>
@@ -285,7 +285,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           setIsEditing(false)
                           setEditedNotes(expense.notes || '')
                         }}
-                        className="flex-1 ios-press min-h-[44px]"
+                        className="flex-1 ios-press h-10 text-sm px-3"
                       >
                         Cancel
                       </Button>
