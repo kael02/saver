@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       stats.totalFat += meal.fat
 
       // By meal time
-      const mealTime = meal.meal_time || 'other'
+      const mealTime = (meal.meal_time || 'other') as 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
       stats.byMealTime[mealTime].count++
       stats.byMealTime[mealTime].calories += meal.calories
 

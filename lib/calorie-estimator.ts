@@ -104,13 +104,23 @@ export class CalorieEstimator {
    */
   private async updateUsageStats(foodId: string): Promise<void> {
     try {
-      await supabaseAdmin
+      // Fetch current count
+      const { data: food } = await supabaseAdmin
         .from('saved_foods')
-        .update({
-          use_count: supabaseAdmin.raw('use_count + 1'),
-          last_used_at: new Date().toISOString(),
-        })
+        .select('use_count')
         .eq('id', foodId)
+        .single()
+
+      if (food) {
+        // Increment and update
+        await supabaseAdmin
+          .from('saved_foods')
+          .update({
+            use_count: food.use_count + 1,
+            last_used_at: new Date().toISOString(),
+          })
+          .eq('id', foodId)
+      }
     } catch (error) {
       console.error('Error updating usage stats:', error)
     }
