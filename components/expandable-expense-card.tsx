@@ -273,7 +273,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           e.stopPropagation()
                           handleSaveNotes()
                         }}
-                        className="flex-1 ios-press min-h-[44px]"
+                        className="flex-1 ios-press h-10 text-sm px-3"
                       >
                         Save
                       </Button>
@@ -285,7 +285,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                           setIsEditing(false)
                           setEditedNotes(expense.notes || '')
                         }}
-                        className="flex-1 ios-press min-h-[44px]"
+                        className="flex-1 ios-press h-10 text-sm px-3"
                       >
                         Cancel
                       </Button>
@@ -314,9 +314,9 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                       e.stopPropagation()
                       handleEdit()
                     }}
-                    className="flex-1 ios-press min-h-[44px] gap-1.5"
+                    className="flex-1 ios-press h-10 text-sm px-3"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-4 h-4 mr-1.5" />
                     Edit
                   </Button>
                 )}
@@ -328,9 +328,9 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                       e.stopPropagation()
                       handleDeleteClick()
                     }}
-                    className="flex-1 ios-press min-h-[44px] gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    className="flex-1 ios-press h-10 text-sm px-3 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 mr-1.5" />
                     Delete
                   </Button>
                 )}
