@@ -89,8 +89,9 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
       className="ios-card overflow-hidden"
     >
       {/* Main content - iOS list item style */}
-      <div
-        className="ios-touch cursor-pointer px-4 py-3.5"
+      <button
+        type="button"
+        className="w-full text-left px-4 py-3.5 ios-touch"
         onClick={handleCardClick}
       >
         <div className="flex items-center gap-3">
@@ -138,7 +139,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             }`}
           />
         </div>
-      </div>
+      </button>
 
       {/* Expanded content */}
       <AnimatePresence initial={false}>
