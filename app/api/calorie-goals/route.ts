@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 // GET /api/calorie-goals - Get active calorie goal
 export async function GET(request: Request) {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to view calorie goals.' },
+        { status: 401 }
+      )
+    }
+
     const today = new Date().toISOString().split('T')[0]
 
     const { data, error } = await supabaseAdmin
       .from('calorie_goals')
       .select('*')
+      .eq('user_id', user.id)
       .lte('start_date', today)
       .or(`end_date.gte.${today},end_date.is.null`)
       .order('start_date', { ascending: false })
@@ -45,6 +58,17 @@ export async function GET(request: Request) {
 // POST /api/calorie-goals - Create new calorie goal
 export async function POST(request: Request) {
   try {
+    // Get authenticated user from session
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Please log in to create calorie goals.' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const {
       daily_calories,
@@ -63,17 +87,19 @@ export async function POST(request: Request) {
       )
     }
 
-    // End previous goals
+    // End previous goals for this user
     const today = new Date().toISOString().split('T')[0]
     await supabaseAdmin
       .from('calorie_goals')
       .update({ end_date: today })
+      .eq('user_id', user.id)
       .is('end_date', null)
 
     // Create new goal
     const { data, error } = await supabaseAdmin
       .from('calorie_goals')
       .insert({
+        user_id: user.id,
         daily_calories,
         protein_target,
         carbs_target,
