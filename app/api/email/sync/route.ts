@@ -54,6 +54,7 @@ export async function POST() {
     let successful = 0
     let failed = 0
     let duplicates = 0
+    let mealsCreated = 0
 
     for (const expense of expenses) {
       console.log(`Attempting to insert: ${expense.amount} ${expense.currency} at ${expense.merchant}`)
@@ -135,6 +136,7 @@ export async function POST() {
               console.error(`Failed to create meal entry:`, mealError)
             } else {
               console.log(`✓ Created meal entry: ${estimate.calories} cal from ${expense.merchant}`)
+              mealsCreated++
             }
           } catch (mealEstimateError) {
             console.error(`Error estimating calories for GrabFood:`, mealEstimateError)
@@ -149,12 +151,14 @@ export async function POST() {
     console.log(`Successfully inserted: ${successful}`)
     console.log(`Duplicates skipped: ${duplicates}`)
     console.log(`Failed: ${failed}`)
+    console.log(`Meals auto-tracked: ${mealsCreated}`)
 
     return NextResponse.json({
       message: `Synced ${successful} new expenses (${duplicates} duplicates skipped, ${failed} failed)`,
       count: successful,
       duplicates,
       failed,
+      mealsCreated,
       accounts: emailServices.length,
       results: insertResults,
     })

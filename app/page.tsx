@@ -130,6 +130,7 @@ export default function Home() {
   const [meals, setMeals] = useState<any[]>([]);
   const [calorieStats, setCalorieStats] = useState<any>(null);
   const [loadingMeals, setLoadingMeals] = useState(false);
+  const [mealsNeedRefresh, setMealsNeedRefresh] = useState(false);
 
   const applyFilters = (
     expenseList: Expense[],
@@ -260,9 +261,13 @@ export default function Home() {
 
   useEffect(() => {
     if (activeView === 'calories') {
-      fetchMeals();
+      // Always fetch on first view, or if marked for refresh
+      if (meals.length === 0 || mealsNeedRefresh) {
+        fetchMeals();
+        setMealsNeedRefresh(false);
+      }
     }
-  }, [activeView]);
+  }, [activeView, mealsNeedRefresh]);
 
   const handleDelete = async (id: string) => {
     const expenseToDelete = expenses.find((e) => e.id === id);
@@ -438,13 +443,31 @@ export default function Home() {
       setLastSynced(new Date());
       setSyncStatus('success');
       setSyncProgress('Sync complete!');
-      setSyncDetail(`Added ${data.newExpenses || 0} new expense(s)`);
+
+      const mealsCount = (data as any).mealsCreated || 0;
+      const detailMessage = mealsCount > 0
+        ? `Added ${data.newExpenses || 0} expense(s) & ${mealsCount} meal(s)`
+        : `Added ${data.newExpenses || 0} new expense(s)`;
+      setSyncDetail(detailMessage);
 
       hapticFeedback('medium');
-      toast.success(`Synced ${data.newExpenses || 0} new expenses`);
+
+      const toastMessage = mealsCount > 0
+        ? `Synced ${data.newExpenses || 0} expenses + ${mealsCount} meals 🍔`
+        : `Synced ${data.newExpenses || 0} new expenses`;
+      toast.success(toastMessage);
 
       if (data.newExpenses > 0) {
         celebrateSuccess();
+      }
+
+      // Mark meals for refresh (in case any GrabFood orders were synced)
+      setMealsNeedRefresh(true);
+
+      // If currently on calories tab, refresh immediately
+      if (activeView === 'calories') {
+        await fetchMeals();
+        setMealsNeedRefresh(false);
       }
 
       // Hide success message after 3 seconds
