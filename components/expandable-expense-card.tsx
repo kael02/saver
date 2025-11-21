@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,8 +41,18 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState(expense.notes || '')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [contentHeight, setContentHeight] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
+
+  // Measure content height when expanded or when editing state changes
+  useEffect(() => {
+    if (isExpanded && contentRef.current) {
+      const height = contentRef.current.scrollHeight
+      setContentHeight(height)
+    }
+  }, [isExpanded, isEditing])
 
   const handleDeleteClick = () => {
     hapticFeedback('light')
@@ -145,20 +155,20 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
-            exit={{ height: 0 }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{
+              height: contentHeight > 0 ? contentHeight : 'auto',
+              opacity: 1
+            }}
+            exit={{ height: 0, opacity: 0 }}
             transition={{
-              duration: 0.3,
+              duration: 0.35,
               ease: [0.4, 0, 0.2, 1]
             }}
             style={{ overflow: 'hidden' }}
           >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
+              ref={contentRef}
               className="px-4 pb-4 pt-2 space-y-4 border-t ios-separator"
             >
               {/* Details section */}
@@ -312,7 +322,7 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
                   </Button>
                 )}
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
