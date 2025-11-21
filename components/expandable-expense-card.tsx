@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatCurrency, formatDate, getCategoryColor, hapticFeedback } from '@/lib/utils'
-import { Trash2, Edit, Mail, ChevronDown, ChevronUp, Clock, CreditCard, User, Calendar, AlertTriangle } from 'lucide-react'
+import { Trash2, Edit, Mail, ChevronRight, Clock, CreditCard, User, Calendar, AlertTriangle } from 'lucide-react'
 import type { Expense } from '@/lib/supabase'
 
 interface ExpandableExpenseCardProps {
@@ -79,212 +79,263 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={`bg-card rounded-2xl p-4 shadow-sm border-l-4 ${categoryColors.border} hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]`}
-      onClick={handleCardClick}
+      transition={{
+        duration: 0.25,
+        ease: [0.175, 0.885, 0.32, 1.275]
+      }}
+      className="ios-card overflow-hidden"
     >
-        <div className="flex items-start justify-between mb-3 gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-            <div className="text-2xl sm:text-3xl flex-shrink-0">
+      {/* Main content - iOS list item style */}
+      <div
+        className="ios-touch cursor-pointer px-4 py-3.5"
+        onClick={handleCardClick}
+      >
+        <div className="flex items-center gap-3">
+          {/* Icon/Emoji */}
+          <div className="flex-shrink-0">
+            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-xl">
               {CATEGORY_EMOJI[expense.category || 'Other'] || '📦'}
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-base sm:text-lg truncate">{expense.merchant}</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground/80 truncate">
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <h3 className="ios-headline truncate">{expense.merchant}</h3>
+              <span className="text-base font-semibold text-destructive flex-shrink-0">
+                {formatCurrency(expense.amount, expense.currency)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="ios-caption text-muted-foreground">
                 {formatDate(expense.transaction_date)}
               </p>
+              {expense.category && (
+                <>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span className="ios-caption text-muted-foreground">
+                    {expense.category}
+                  </span>
+                </>
+              )}
             </div>
-          </div>
-          <div className="text-right flex-shrink-0 flex items-center gap-2">
-            <div>
-              <p className="text-base sm:text-xl font-bold text-destructive">
-                {formatCurrency(expense.amount, expense.currency)}
+
+            {!isExpanded && expense.notes && (
+              <p className="ios-caption text-muted-foreground mt-1 line-clamp-1">
+                {expense.notes}
               </p>
-            </div>
-            {isExpanded ? (
-              <ChevronUp className="h-5 w-5 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-5 w-5 text-muted-foreground" />
             )}
           </div>
+
+          {/* Disclosure indicator */}
+          <ChevronRight
+            className={`h-5 w-5 text-muted-foreground/50 flex-shrink-0 transition-transform duration-200 ${
+              isExpanded ? 'rotate-90' : ''
+            }`}
+          />
         </div>
+      </div>
 
-        {!isExpanded && expense.notes && (
-          <p className="text-sm text-muted-foreground/80 mb-3 line-clamp-1">
-            {expense.notes}
-          </p>
-        )}
-
-        {/* Expanded content */}
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="overflow-hidden"
-            >
-              <div className="pt-3 border-t space-y-3">
-                {/* Details */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
+      {/* Expanded content */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-2 space-y-4 border-t ios-separator">
+              {/* Details section */}
+              <div className="space-y-2.5">
+                {/* Date & Time */}
+                <div className="flex items-center justify-between py-2">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>{new Date(expense.transaction_date).toLocaleDateString('vi-VN')}</span>
+                    <span className="ios-body text-sm">Date</span>
                   </div>
+                  <span className="ios-body text-sm">
+                    {new Date(expense.transaction_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    <span>{new Date(expense.transaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="ios-body text-sm">Time</span>
                   </div>
-                  {expense.card_number && (
+                  <span className="ios-body text-sm">
+                    {new Date(expense.transaction_date).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </span>
+                </div>
+
+                {/* Card info */}
+                {expense.card_number && (
+                  <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <CreditCard className="h-4 w-4" />
-                      <span>•••• {expense.card_number.slice(-4)}</span>
+                      <span className="ios-body text-sm">Card</span>
                     </div>
-                  )}
-                  {expense.cardholder && (
+                    <span className="ios-body text-sm">•••• {expense.card_number.slice(-4)}</span>
+                  </div>
+                )}
+
+                {/* Cardholder */}
+                {expense.cardholder && (
+                  <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <User className="h-4 w-4" />
-                      <span>{expense.cardholder}</span>
+                      <span className="ios-body text-sm">Cardholder</span>
                     </div>
-                  )}
-                </div>
+                    <span className="ios-body text-sm">{expense.cardholder}</span>
+                  </div>
+                )}
 
-                {/* Notes */}
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                    Notes
-                  </label>
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editedNotes}
-                        onChange={(e) => setEditedNotes(e.target.value)}
-                        placeholder="Add notes..."
-                        className="min-h-[60px] text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSaveNotes()
-                          }}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setIsEditing(false)
-                            setEditedNotes(expense.notes || '')
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsEditing(true)
-                      }}
-                      className="text-sm text-muted-foreground bg-muted/30 p-2 rounded-lg cursor-text min-h-[60px] hover:bg-muted/50 transition-colors"
-                    >
-                      {expense.notes || 'Click to add notes...'}
-                    </div>
-                  )}
+                {/* Source badge */}
+                <div className="flex items-center justify-between py-2">
+                  <span className="ios-body text-sm text-muted-foreground">Source</span>
+                  <Badge variant={expense.source === 'email' ? 'default' : 'secondary'} className="text-xs">
+                    {expense.source === 'email' ? (
+                      <>
+                        <Mail className="w-3 h-3 mr-1" />
+                        Auto Import
+                      </>
+                    ) : (
+                      'Manual Entry'
+                    )}
+                  </Badge>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        <div className="flex items-center justify-between gap-2 mt-3">
-          <div className="flex gap-2">
-            <Badge variant={expense.source === 'email' ? 'default' : 'secondary'} className="text-xs">
-              {expense.source === 'email' ? (
-                <>
-                  <Mail className="w-3 h-3 mr-1" />
-                  Auto
-                </>
-              ) : (
-                'Manual'
-              )}
-            </Badge>
-            {expense.category && (
-              <Badge
-                variant="outline"
-                className={`text-xs ${categoryColors.bg} ${categoryColors.text} border-transparent`}
-              >
-                {expense.category}
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            {onEdit && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleEdit()
-                }}
-                className="h-8 w-8"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDeleteClick()
-                }}
-                className="h-8 w-8 text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-            <AlertDialogHeader>
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
+              {/* Notes section */}
+              <div className="pt-2 border-t ios-separator">
+                <label className="ios-caption text-muted-foreground mb-2 block uppercase tracking-wide">
+                  Notes
+                </label>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editedNotes}
+                      onChange={(e) => setEditedNotes(e.target.value)}
+                      placeholder="Add notes..."
+                      className="ios-body text-sm resize-none border-muted"
+                      rows={3}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSaveNotes()
+                        }}
+                        className="flex-1 ios-press min-h-touch"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setIsEditing(false)
+                          setEditedNotes(expense.notes || '')
+                        }}
+                        className="flex-1 ios-press min-h-touch"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsEditing(true)
+                    }}
+                    className="ios-body text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg cursor-text min-h-[64px] ios-touch"
+                  >
+                    {expense.notes || 'Tap to add notes...'}
+                  </div>
+                )}
               </div>
-              <AlertDialogTitle className="text-center text-lg sm:text-xl">Delete Expense?</AlertDialogTitle>
-              <AlertDialogDescription className="text-center text-sm sm:text-base">
-                Are you sure you want to delete this expense from <span className="font-semibold">{expense.merchant}</span>?
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-0">
-              <AlertDialogCancel onClick={() => hapticFeedback('light')} className="min-h-touch">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                className="min-h-touch bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-2">
+                {onEdit && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEdit()
+                    }}
+                    className="flex-1 ios-press min-h-touch gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteClick()
+                    }}
+                    className="flex-1 ios-press min-h-touch gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="ios-card">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-7 w-7 text-destructive" />
+            </div>
+            <AlertDialogTitle className="text-center ios-title">Delete Expense?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center ios-body text-muted-foreground">
+              Are you sure you want to delete this expense from <span className="font-semibold text-foreground">{expense.merchant}</span>?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="w-full touch-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 ios-press order-1"
+            >
+              Delete Expense
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => hapticFeedback('light')}
+              className="w-full touch-lg ios-press order-2 mt-0"
+            >
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   )
 }

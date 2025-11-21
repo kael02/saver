@@ -27,9 +27,19 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavProps) {
     <motion.nav
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border safe-bottom"
+      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        backgroundColor: 'rgba(var(--card) / 0.8)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+      }}
     >
-      <div className="flex items-center justify-around px-2 py-2 max-w-screen-sm mx-auto">
+      {/* iOS hairline border */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-border/30" />
+
+      {/* Tab items */}
+      <div className="flex items-end justify-around px-safe-left px-safe-right pb-1 pt-2 max-w-screen-sm mx-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = activeView === item.id
@@ -38,48 +48,50 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavProps) {
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className="relative flex flex-col items-center justify-center min-w-touch min-h-touch py-1 px-3 rounded-lg transition-all active:scale-95"
+              className="relative flex flex-col items-center justify-center flex-1 py-1 ios-touch"
             >
-              {/* Active indicator */}
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/10 rounded-lg"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-
               {/* Icon */}
-              <div className="relative">
+              <motion.div
+                animate={{
+                  scale: isActive ? 1 : 0.94,
+                }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                className="relative mb-1"
+              >
                 <Icon
-                  className={`h-5 w-5 sm:h-6 sm:w-6 transition-colors ${
+                  className={`h-6 w-6 transition-colors duration-200 ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
+                  strokeWidth={isActive ? 2.5 : 2}
                 />
-                {isActive && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full"
-                  />
-                )}
-              </div>
+              </motion.div>
 
               {/* Label */}
-              <span
-                className={`text-[9px] sm:text-[10px] mt-1 font-medium transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}
+              <motion.span
+                animate={{
+                  color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                }}
+                transition={{ duration: 0.2 }}
+                className="text-[10px] font-medium"
+                style={{
+                  letterSpacing: '-0.1px',
+                }}
               >
                 {item.label}
-              </span>
+              </motion.span>
             </button>
           )
         })}
       </div>
 
-      {/* Safe area padding for iOS */}
-      <div className="h-safe-bottom bg-background/80 backdrop-blur-xl" />
+      {/* Safe area padding for iOS home indicator */}
+      <div
+        className="w-full"
+        style={{
+          height: 'max(env(safe-area-inset-bottom), 8px)',
+          backgroundColor: 'rgba(var(--card) / 0.8)',
+        }}
+      />
     </motion.nav>
   )
 }

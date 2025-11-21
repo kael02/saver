@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LucideIcon } from 'lucide-react'
 
 interface StatsCardProps {
@@ -15,22 +14,36 @@ interface StatsCardProps {
 export function StatsCard({ title, value, icon: Icon, description, index = 0 }: StatsCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{
+        duration: 0.3,
+        delay: index * 0.05,
+        ease: [0.175, 0.885, 0.32, 1.275] // iOS spring curve
+      }}
+      className="ios-card ios-press p-5"
     >
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{value}</div>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Header with icon */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="ios-caption text-muted-foreground uppercase tracking-wide">
+          {title}
+        </h3>
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
+      </div>
+
+      {/* Value */}
+      <div className="text-3xl font-semibold tracking-tight mb-1">
+        {value}
+      </div>
+
+      {/* Description */}
+      {description && (
+        <p className="ios-caption text-muted-foreground">
+          {description}
+        </p>
+      )}
     </motion.div>
   )
 }
