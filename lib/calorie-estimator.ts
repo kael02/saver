@@ -127,31 +127,32 @@ export class CalorieEstimator {
   }
 
   /**
-   * Estimate calories using Claude API (Haiku - fast and cheap)
+   * Estimate calories using OpenRouter AI (Gemini - fast and free)
    */
   private async estimateWithLLM(
     foodDescription: string,
     context?: EstimationContext
   ): Promise<CalorieEstimate> {
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENROUTER_API_KEY
 
     if (!apiKey) {
-      console.warn('ANTHROPIC_API_KEY not configured, using fallback estimation')
+      console.warn('OPENROUTER_API_KEY not configured, using fallback estimation')
       return this.fallbackEstimate(foodDescription)
     }
 
     try {
       const prompt = this.buildPrompt(foodDescription, context)
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'Expense Tracker Calorie Estimator',
         },
         body: JSON.stringify({
-          model: 'claude-3-5-haiku-20241022', // Fast and cheap model
+          model: 'google/gemini-2.5-flash', // Fast and free model
           max_tokens: 500,
           temperature: 0.1, // Low temperature for consistent estimates
           messages: [
@@ -165,15 +166,15 @@ export class CalorieEstimator {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Anthropic API error:', response.status, errorText)
+        console.error('OpenRouter API error:', response.status, errorText)
         return this.fallbackEstimate(foodDescription)
       }
 
       const data = await response.json()
-      const content = data.content?.[0]?.text
+      const content = data.choices?.[0]?.message?.content?.trim()
 
       if (!content) {
-        console.error('No content in Anthropic response')
+        console.error('No content in OpenRouter response')
         return this.fallbackEstimate(foodDescription)
       }
 
@@ -189,7 +190,7 @@ export class CalorieEstimator {
   }
 
   /**
-   * Build the prompt for Claude API
+   * Build the prompt for OpenRouter AI
    * Optimized for Vietnamese food and personal portions
    */
   private buildPrompt(
