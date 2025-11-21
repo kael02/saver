@@ -30,6 +30,14 @@ export class EmailService {
         port: this.config.port,
         tls: this.config.tls,
         tlsOptions: { rejectUnauthorized: false },
+        // Increase timeouts for serverless environments
+        authTimeout: 30000, // 30 seconds for authentication
+        connTimeout: 20000, // 20 seconds for connection
+        keepalive: {
+          interval: 10000, // Send keepalive every 10 seconds
+          idleInterval: 300000, // 5 minutes idle interval
+          forceNoop: true
+        }
       })
 
       const expenses: ParsedExpense[] = []
@@ -213,6 +221,14 @@ export class EmailService {
         port: this.config.port,
         tls: this.config.tls,
         tlsOptions: { rejectUnauthorized: false },
+        // Increase timeouts for serverless environments
+        authTimeout: 30000, // 30 seconds for authentication
+        connTimeout: 20000, // 20 seconds for connection
+        keepalive: {
+          interval: 10000, // Send keepalive every 10 seconds
+          idleInterval: 300000, // 5 minutes idle interval
+          forceNoop: true
+        }
       })
 
       imap.once('ready', () => {
