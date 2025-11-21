@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
-import { formatCurrency } from '@/lib/utils'
-import { Plus, Edit2, Trash2, Save, X, Target } from 'lucide-react'
+import { formatCurrency, hapticFeedback } from '@/lib/utils'
+import { Plus, Edit2, Trash2, Save, X, Target, Calendar as CalendarIcon } from 'lucide-react'
 import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '@/lib/hooks'
 import type { Tables } from '@/lib/supabase/database.types'
 
@@ -104,22 +102,28 @@ export function SavingsGoals() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading goals...</div>
+    return (
+      <div className="ios-card p-8 text-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="ios-caption text-muted-foreground">Loading goals...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Add Goal Button */}
       {!showForm && (
         <Button
           onClick={() => {
+            hapticFeedback('light')
             setEditingGoal(null)
             setFormData({ name: '', targetAmount: '', currentAmount: '', deadline: '', icon: '🎯' })
             setShowForm(true)
           }}
-          className="w-full gap-2"
+          className="w-full ios-press min-h-touch gap-2"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-5 w-5" />
           Add New Goal
         </Button>
       )}
@@ -128,27 +132,34 @@ export function SavingsGoals() {
       <AnimatePresence>
         {showForm && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
           >
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">
+            <div className="ios-card p-5">
+              <h3 className="ios-headline mb-4">
                 {editingGoal ? 'Edit Goal' : 'New Goal'}
               </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Icon Selector */}
                 <div>
-                  <Label>Goal Icon</Label>
-                  <div className="flex gap-2 mt-2">
+                  <Label className="ios-caption text-muted-foreground uppercase tracking-wide mb-2 block">
+                    Goal Icon
+                  </Label>
+                  <div className="flex gap-2 flex-wrap">
                     {GOAL_ICONS.map((icon) => (
                       <button
                         key={icon}
                         type="button"
-                        onClick={() => setFormData({ ...formData, icon })}
-                        className={`text-2xl p-2 rounded-lg transition-all ${
+                        onClick={() => {
+                          hapticFeedback('light')
+                          setFormData({ ...formData, icon })
+                        }}
+                        className={`text-2xl w-12 h-12 rounded-xl ios-press transition-all ${
                           formData.icon === icon
-                            ? 'bg-primary scale-110'
-                            : 'bg-secondary hover:bg-secondary/80'
+                            ? 'bg-primary/20 scale-105 ring-2 ring-primary'
+                            : 'bg-secondary'
                         }`}
                       >
                         {icon}
@@ -157,92 +168,119 @@ export function SavingsGoals() {
                   </div>
                 </div>
 
+                {/* Goal Name */}
                 <div>
-                  <Label htmlFor="name">Goal Name</Label>
+                  <Label htmlFor="name" className="ios-caption text-muted-foreground uppercase tracking-wide mb-2 block">
+                    Goal Name
+                  </Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Vacation to Bali"
+                    className="ios-body min-h-touch"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Amounts */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="targetAmount">Target Amount (₫)</Label>
+                    <Label htmlFor="targetAmount" className="ios-caption text-muted-foreground uppercase tracking-wide mb-2 block">
+                      Target (₫)
+                    </Label>
                     <Input
                       id="targetAmount"
                       type="number"
                       value={formData.targetAmount}
                       onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
-                      placeholder="10000000"
+                      placeholder="10,000,000"
+                      className="ios-body min-h-touch"
                       required
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="currentAmount">Current Amount (₫)</Label>
+                    <Label htmlFor="currentAmount" className="ios-caption text-muted-foreground uppercase tracking-wide mb-2 block">
+                      Current (₫)
+                    </Label>
                     <Input
                       id="currentAmount"
                       type="number"
                       value={formData.currentAmount}
                       onChange={(e) => setFormData({ ...formData, currentAmount: e.target.value })}
                       placeholder="0"
+                      className="ios-body min-h-touch"
                     />
                   </div>
                 </div>
 
+                {/* Deadline */}
                 <div>
-                  <Label htmlFor="deadline">Deadline (Optional)</Label>
+                  <Label htmlFor="deadline" className="ios-caption text-muted-foreground uppercase tracking-wide mb-2 block">
+                    Deadline (Optional)
+                  </Label>
                   <Input
                     id="deadline"
                     type="date"
                     value={formData.deadline}
                     onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                    className="ios-body min-h-touch"
                   />
                 </div>
 
-                <div className="flex gap-2">
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
                   <Button
                     type="submit"
-                    className="flex-1"
+                    className="flex-1 ios-press min-h-touch gap-2"
                     disabled={createGoalMutation.isPending || updateGoalMutation.isPending}
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingGoal ? 'Update' : 'Create'}
+                    <Save className="h-4 w-4" />
+                    {editingGoal ? 'Update Goal' : 'Create Goal'}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
+                      hapticFeedback('light')
                       setShowForm(false)
                       setEditingGoal(null)
                     }}
+                    className="ios-press min-h-touch px-4"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </form>
-            </Card>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Goals List */}
       {goals.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No savings goals yet</h3>
-          <p className="text-muted-foreground text-sm">
-            Create your first goal to start tracking your progress
-          </p>
-        </Card>
+        <div className="ios-card p-12 text-center">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', duration: 0.5 }}
+          >
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Target className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="ios-headline mb-2">No Goals Yet</h3>
+            <p className="ios-caption text-muted-foreground">
+              Create your first savings goal to start tracking your progress
+            </p>
+          </motion.div>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {goals.map((goal) => {
+        <div className="space-y-3">
+          {goals.map((goal, index) => {
             const progress = ((goal.current_amount || 0) / goal.target_amount) * 100
             const remaining = goal.target_amount - (goal.current_amount || 0)
+            const isCompleted = progress >= 100
             const daysUntilDeadline = goal.deadline
               ? Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
               : null
@@ -251,79 +289,111 @@ export function SavingsGoals() {
               <motion.div
                 key={goal.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.2 }}
+                className="ios-card p-5"
               >
-                <Card className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">{goal.icon || '🎯'}</span>
-                      <div>
-                        <h3 className="font-semibold text-lg">{goal.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {formatCurrency(goal.current_amount || 0, 'VND')} of{' '}
-                          {formatCurrency(goal.target_amount, 'VND')}
-                        </p>
-                      </div>
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl flex-shrink-0">
+                      {goal.icon || '🎯'}
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(goal)}
-                        className="h-8 w-8"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(goal.id)}
-                        className="h-8 w-8 text-destructive"
-                        disabled={deleteGoalMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="ios-headline truncate">{goal.name}</h3>
+                      <p className="ios-caption text-muted-foreground">
+                        {formatCurrency(goal.current_amount || 0, 'VND')} of{' '}
+                        {formatCurrency(goal.target_amount, 'VND')}
+                      </p>
                     </div>
                   </div>
 
-                  <Progress value={Math.min(progress, 100)} className="h-3 mb-3" />
+                  {/* Actions */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        hapticFeedback('light')
+                        handleEdit(goal)
+                      }}
+                      className="h-9 w-9 ios-touch"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        hapticFeedback('medium')
+                        handleDelete(goal.id)
+                      }}
+                      className="h-9 w-9 text-destructive ios-touch"
+                      disabled={deleteGoalMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {progress.toFixed(1)}% complete
-                    </span>
-                    <span className="font-medium">
-                      {remaining > 0 ? formatCurrency(remaining, 'VND') + ' to go' : 'Goal reached! 🎉'}
-                    </span>
+                {/* Progress Bar */}
+                <div className="space-y-2 mb-4">
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(progress, 100)}%` }}
+                      transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                      className={`h-full rounded-full ${
+                        isCompleted ? 'bg-green-500' : 'bg-primary'
+                      }`}
+                    />
                   </div>
 
-                  {daysUntilDeadline !== null && (
-                    <p className="text-xs text-muted-foreground mt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="ios-caption text-muted-foreground">
+                      {progress.toFixed(0)}% complete
+                    </span>
+                    <span className={`ios-caption font-medium ${isCompleted ? 'text-green-500' : ''}`}>
+                      {isCompleted ? 'Goal reached! 🎉' : `${formatCurrency(remaining, 'VND')} to go`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Deadline Info */}
+                {daysUntilDeadline !== null && (
+                  <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-secondary/50 rounded-lg">
+                    <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <p className="ios-caption text-muted-foreground">
                       {daysUntilDeadline > 0
                         ? `${daysUntilDeadline} days until deadline`
                         : daysUntilDeadline === 0
                         ? 'Deadline is today!'
-                        : `${Math.abs(daysUntilDeadline)} days past deadline`}
+                        : `${Math.abs(daysUntilDeadline)} days overdue`}
                     </p>
-                  )}
+                  </div>
+                )}
 
-                  {/* Quick Add Progress */}
-                  <div className="flex gap-2 mt-4">
+                {/* Quick Add Progress */}
+                {!isCompleted && (
+                  <div className="flex gap-2">
                     {[100000, 500000, 1000000].map((amount) => (
                       <Button
                         key={amount}
                         variant="outline"
                         size="sm"
-                        onClick={() => handleAddProgress(goal, amount)}
-                        className="flex-1"
+                        onClick={() => {
+                          hapticFeedback('medium')
+                          handleAddProgress(goal, amount)
+                        }}
+                        className="flex-1 ios-press min-h-touch text-primary"
                         disabled={updateGoalMutation.isPending}
                       >
-                        +{(amount / 1000).toFixed(0)}k
+                        +{(amount / 1000000).toFixed(1)}M
                       </Button>
                     ))}
                   </div>
-                </Card>
+                )}
               </motion.div>
             )
           })}
