@@ -46,13 +46,24 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
 
   const categoryColors = getCategoryColor(expense.category || 'Other')
 
-  // Measure content height when expanded or when editing state changes
+  // Use ResizeObserver for automatic height measurement
   useEffect(() => {
-    if (isExpanded && contentRef.current) {
-      const height = contentRef.current.scrollHeight
-      setContentHeight(height)
+    if (!contentRef.current) return
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContentHeight(entry.contentRect.height)
+      }
+    })
+
+    if (isExpanded) {
+      resizeObserver.observe(contentRef.current)
     }
-  }, [isExpanded, isEditing])
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [isExpanded])
 
   const handleDeleteClick = () => {
     hapticFeedback('light')
@@ -162,14 +173,14 @@ export function ExpandableExpenseCard({ expense, onDelete, onEdit, onUpdate }: E
             }}
             exit={{ height: 0, opacity: 0 }}
             transition={{
-              duration: 0.35,
+              duration: 0.3,
               ease: [0.4, 0, 0.2, 1]
             }}
             style={{ overflow: 'hidden' }}
           >
             <div
               ref={contentRef}
-              className="px-4 pb-4 pt-2 space-y-4 border-t ios-separator"
+              className="px-4 pb-4 pt-3 space-y-4"
             >
               {/* Details section */}
               <div className="space-y-2.5">
