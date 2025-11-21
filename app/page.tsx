@@ -567,86 +567,117 @@ export default function Home() {
       {/* Header - iOS Safe Area Optimized */}
       <motion.div
         animate={{
-          paddingBottom: scrolled ? '1.25rem' : '2rem',
+          paddingBottom: scrolled ? '0.75rem' : '1.25rem',
         }}
-        transition={{ duration: 0.3 }}
-        className="sticky top-0 z-40 frosted-card px-5 pt-safe-top pb-8 rounded-b-3xl shadow-lg"
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="sticky top-0 z-40 px-4 pt-safe-top pb-4"
+        style={{
+          backgroundColor: 'rgba(var(--background) / 0.8)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
       >
-        <div className="flex items-center justify-between mb-3 pt-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-high-contrast">
-              Expenses
-            </h1>
-            <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-              {activeView === 'expenses'
-                ? 'Track spending'
-                : activeView === 'analytics'
-                ? 'View insights'
-                : activeView === 'budget'
-                ? 'Manage budget'
-                : activeView === 'goals'
-                ? 'Savings goals'
-                : activeView === 'summary'
-                ? 'Weekly report'
-                : 'Spending patterns'}
-            </p>
-          </div>
-        </div>
+        {/* iOS Large Title */}
+        <motion.div
+          animate={{
+            opacity: scrolled ? 0.8 : 1,
+            scale: scrolled ? 0.95 : 1,
+          }}
+          transition={{ duration: 0.3 }}
+          className="pt-2 pb-1"
+        >
+          <h1 className="ios-large-title mb-1">
+            {activeView === 'expenses'
+              ? 'Expenses'
+              : activeView === 'analytics'
+              ? 'Analytics'
+              : activeView === 'budget'
+              ? 'Budget'
+              : activeView === 'goals'
+              ? 'Goals'
+              : activeView === 'calories'
+              ? 'Calories'
+              : activeView === 'summary'
+              ? 'Summary'
+              : 'Insights'}
+          </h1>
+          <p className="ios-caption text-muted-foreground">
+            {activeView === 'expenses'
+              ? 'Track your spending'
+              : activeView === 'analytics'
+              ? 'View spending insights'
+              : activeView === 'budget'
+              ? 'Manage your budget'
+              : activeView === 'goals'
+              ? 'Your savings goals'
+              : activeView === 'calories'
+              ? 'Track your calories'
+              : activeView === 'summary'
+              ? 'Weekly spending report'
+              : 'AI spending patterns'}
+          </p>
+        </motion.div>
 
-        {/* Today's Total */}
+        {/* Today's Total - Compact iOS card */}
         <motion.div
           animate={{
             opacity: scrolled ? 0 : 1,
             height: scrolled ? 0 : 'auto',
-            marginTop: scrolled ? 0 : '1.25rem',
+            marginTop: scrolled ? 0 : '1rem',
           }}
-          transition={{ duration: 0.3 }}
-          className="glass rounded-2xl p-4 sm:p-6 overflow-hidden"
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="ios-card p-5 overflow-hidden"
         >
-          <p className="text-muted-foreground text-xs sm:text-sm mb-2.5">
-            Today's Spending
-          </p>
-          <p className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
+          <div className="flex items-center justify-between mb-2">
+            <p className="ios-caption text-muted-foreground uppercase tracking-wide">
+              Today's Spending
+            </p>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-primary" />
+            </div>
+          </div>
+          <p className="text-4xl font-bold tracking-tight leading-tight mb-2">
             <AnimatedCounter value={todayTotal} prefix="₫ " duration={1200} />
           </p>
-          <p className="text-muted-foreground text-sm sm:text-base mt-3">
-            {todayExpenses.length}{' '}
-            {todayExpenses.length === 1 ? 'expense' : 'expenses'}
+          <p className="ios-caption text-muted-foreground">
+            {todayExpenses.length} {todayExpenses.length === 1 ? 'transaction' : 'transactions'}
           </p>
         </motion.div>
+
+        {/* Hairline separator when scrolled */}
+        <motion.div
+          animate={{ opacity: scrolled ? 1 : 0 }}
+          className="absolute bottom-0 left-0 right-0 h-px bg-border/30"
+        />
       </motion.div>
 
       {/* Stats Cards */}
       {loading ? (
-        <div className="px-5 mt-6 mb-6">
-          <div className="grid grid-cols-2 gap-3">
-            <StatsCardSkeleton />
-            <StatsCardSkeleton />
-          </div>
+        <div className="px-4 mt-4 mb-4 space-y-3">
+          <StatsCardSkeleton />
+          <StatsCardSkeleton />
         </div>
       ) : (
         stats && (
-          <div className="px-5 mt-6 mb-6">
-            <div className="grid grid-cols-2 gap-3">
-              <StatsCard
-                title="Total"
-                value={formatCurrency(stats.total, 'VND')}
-                icon={Wallet}
-                description={`${stats.count} total`}
-                index={0}
-              />
-              <StatsCard
-                title="Top Merchant"
-                value={stats.topMerchants?.[0]?.merchant?.slice(0, 15) || 'N/A'}
-                icon={TrendingDown}
-                description={
-                  stats.topMerchants?.[0]
-                    ? formatCurrency(stats.topMerchants[0].amount, 'VND')
-                    : 'No data'
-                }
-                index={1}
-              />
-            </div>
+          <div className="px-4 mt-4 mb-4 space-y-3">
+            <StatsCard
+              title="Total Spent"
+              value={formatCurrency(stats.total, 'VND')}
+              icon={Wallet}
+              description={`${stats.count} transactions`}
+              index={0}
+            />
+            <StatsCard
+              title="Top Merchant"
+              value={stats.topMerchants?.[0]?.merchant || 'N/A'}
+              icon={TrendingDown}
+              description={
+                stats.topMerchants?.[0]
+                  ? formatCurrency(stats.topMerchants[0].amount, 'VND')
+                  : 'No data yet'
+              }
+              index={1}
+            />
           </div>
         )
       )}
@@ -654,7 +685,7 @@ export default function Home() {
       {/* Sync Progress */}
       <AnimatePresence>
         {syncStatus !== 'idle' && (
-          <div className="px-5 mb-6">
+          <div className="px-4 mb-4">
             <ProgressIndicator
               status={syncStatus}
               message={syncProgress}
@@ -665,7 +696,7 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Content based on active view */}
-      <div className="px-5">
+      <div className="px-4">
         {activeView === 'expenses' && (
           <>
             {/* Search and Filter Bar - iOS optimized */}
@@ -697,8 +728,8 @@ export default function Home() {
               </Button>
             </div>
 
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold text-high-contrast">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="ios-headline">
                 {filteredExpenses.length === expenses.length
                   ? 'All Expenses'
                   : `${filteredExpenses.length} of ${expenses.length}`}
@@ -706,15 +737,14 @@ export default function Home() {
               {filteredExpenses.length > 10 && (
                 <Button
                   variant="ghost"
-                  size="default"
+                  size="sm"
                   onClick={() => {
                     setShowAllExpenses(!showAllExpenses);
                     hapticFeedback('light');
                   }}
-                  className="gap-2 ripple-effect min-h-touch px-4"
+                  className="gap-2 ios-touch min-h-touch text-primary"
                 >
-                  <Calendar className="w-4 h-4" />
-                  {showAllExpenses ? 'Less' : 'All'}
+                  {showAllExpenses ? 'Show Less' : 'View All'}
                 </Button>
               )}
             </div>
@@ -818,7 +848,7 @@ export default function Home() {
               </div>
             </motion.div>
           ) : (
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               <AnimatePresence mode="popLayout">
                 {(showAllExpenses
                   ? filteredExpenses
