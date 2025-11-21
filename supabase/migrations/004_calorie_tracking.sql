@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS calorie_goals (
 
 -- Index for finding active goal
 CREATE INDEX IF NOT EXISTS idx_calorie_goals_active ON calorie_goals(start_date DESC, end_date)
-  WHERE end_date IS NULL OR end_date >= CURRENT_DATE;
+  WHERE end_date IS NULL;
 
 -- ============================================================================
 -- 4. Update triggers for updated_at
