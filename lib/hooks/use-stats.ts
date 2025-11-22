@@ -89,10 +89,14 @@ export function useStats(
  * Email sync response interface
  */
 export interface EmailSyncResponse {
-  success: boolean
+  message: string
   newExpenses: number
+  count: number
   duplicates: number
-  errors: string[]
+  failed: number
+  mealsCreated?: number
+  accounts?: number
+  results?: any[]
 }
 
 /**
@@ -135,15 +139,8 @@ export function useEmailSync() {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.stats.all })
 
-      if (data.newExpenses > 0) {
-        toast.success(`Synced ${data.newExpenses} new expense${data.newExpenses > 1 ? 's' : ''}`)
-      } else {
-        toast.info('No new expenses found')
-      }
-
-      if (data.errors.length > 0) {
-        toast.error(`${data.errors.length} error${data.errors.length > 1 ? 's' : ''} occurred during sync`)
-      }
+      // Don't show toast here - let the page handle it for better UX
+      // The page.tsx already handles showing appropriate messages
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to sync emails')

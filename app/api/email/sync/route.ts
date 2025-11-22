@@ -42,7 +42,12 @@ export async function POST() {
     if (expenses.length === 0) {
       return NextResponse.json({
         message: 'No new expenses found',
+        newExpenses: 0,
         count: 0,
+        duplicates: 0,
+        failed: 0,
+        mealsCreated: 0,
+        accounts: emailServices.length,
         expenses: [],
       })
     }
@@ -155,7 +160,8 @@ export async function POST() {
 
     return NextResponse.json({
       message: `Synced ${successful} new expenses (${duplicates} duplicates skipped, ${failed} failed)`,
-      count: successful,
+      newExpenses: successful,
+      count: successful, // Keep for backwards compatibility
       duplicates,
       failed,
       mealsCreated,
