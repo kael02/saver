@@ -129,7 +129,11 @@ export default function Home() {
   const lastScrollY = useRef(0);
 
   // Calorie tracking state - now using TanStack Query hooks
-  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Memoize startDate to prevent recalculation on every render (which causes repeated API calls)
+  const startDate = useMemo(() => {
+    return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  }, []); // Empty deps = calculate once on mount
+
   const { data: meals = [], isLoading: loadingMeals } = useMeals(
     { startDate, limit: 100 },
     { enabled: activeView === 'calories' }
