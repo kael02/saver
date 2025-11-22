@@ -1,18 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
 import { Flame, TrendingUp, TrendingDown, Target } from 'lucide-react'
 import { AnimatedCounter } from '@/components/animated-counter'
-
-interface CalorieGoal {
-  daily_calories: number
-  protein_target?: number
-  carbs_target?: number
-  fat_target?: number
-}
+import { useCalorieGoal, useCalorieStats } from '@/lib/hooks'
 
 interface DailyStats {
   calories: number
@@ -22,95 +15,57 @@ interface DailyStats {
   meals: number
 }
 
-interface CalorieTrackerProps {
-  refreshTrigger?: number // When this changes, data will be refetched
-}
+export function CalorieTracker() {
+  // Use React Query hooks for automatic cache management
+  const { data: goal, isLoading: loadingGoal } = useCalorieGoal()
 
-export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
-  const [goal, setGoal] = useState<CalorieGoal | null>(null)
-  const [today, setToday] = useState<DailyStats>({ calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchData()
-  }, [refreshTrigger]) // Refetch when refreshTrigger changes
-
-  const fetchData = async () => {
-    try {
-      // Fetch calorie goal
-      const goalRes = await fetch('/api/calorie-goals')
-
-      // Check for authentication error
-      if (goalRes.status === 401) {
-        console.log('User not authenticated for calorie tracking')
-        setGoal(null)
-        setLoading(false)
-        return
-      }
-
-      if (!goalRes.ok) {
-        throw new Error(`Failed to fetch goal: ${goalRes.statusText}`)
-      }
-
-      const goalData = await goalRes.json()
-      setGoal(goalData)
-
-      // Fetch today's stats
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayEnd = new Date()
-      todayEnd.setHours(23, 59, 59, 999)
-
-      const statsRes = await fetch(
-        `/api/calorie-stats?startDate=${todayStart.toISOString()}&endDate=${todayEnd.toISOString()}`
-      )
-
-      if (statsRes.status === 401) {
-        console.log('User not authenticated for calorie stats')
-        setLoading(false)
-        return
-      }
-
-      if (!statsRes.ok) {
-        throw new Error(`Failed to fetch stats: ${statsRes.statusText}`)
-      }
-
-      const statsData = await statsRes.json()
-
-      // Get today's totals - use local date to match what's stored
-      // Format: YYYY-MM-DD in local timezone
-      const year = todayStart.getFullYear()
-      const month = String(todayStart.getMonth() + 1).padStart(2, '0')
-      const day = String(todayStart.getDate()).padStart(2, '0')
-      const todayDateLocal = `${year}-${month}-${day}`
-
-      // Also check UTC date in case of timezone differences
-      const todayDateUTC = todayStart.toISOString().split('T')[0]
-
-      console.log('📊 CalorieTracker Debug:', {
-        todayDateLocal,
-        todayDateUTC,
-        byDate: statsData.byDate,
-        allDates: Object.keys(statsData.byDate || {}),
-        todayStatsLocal: statsData.byDate?.[todayDateLocal],
-        todayStatsUTC: statsData.byDate?.[todayDateUTC],
-        totalCalories: statsData.totalCalories,
-        mealCount: statsData.mealCount,
-      })
-
-      // Try local date first, fallback to UTC date
-      const todayStats = statsData.byDate?.[todayDateLocal] ||
-                        statsData.byDate?.[todayDateUTC] ||
-                        { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
-      setToday(todayStats)
-    } catch (error) {
-      console.error('Error fetching calorie data:', error)
-    } finally {
-      setLoading(false)
+  // Get today's date range for stats
+  const { todayStart, todayEnd } = useMemo(() => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const end = new Date()
+    end.setHours(23, 59, 59, 999)
+    return {
+      todayStart: start.toISOString(),
+      todayEnd: end.toISOString(),
     }
-  }
+  }, [])
 
-  if (loading) {
+  const { data: statsData, isLoading: loadingStats } = useCalorieStats(
+    {
+      startDate: todayStart,
+      endDate: todayEnd,
+    },
+    {
+      enabled: !!goal, // Only fetch stats if we have a goal
+    }
+  )
+
+  // Extract today's stats from the response
+  const today = useMemo<DailyStats>(() => {
+    if (!statsData?.byDate) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
+    }
+
+    // Get today's date in local timezone (YYYY-MM-DD)
+    const todayDate = new Date()
+    const year = todayDate.getFullYear()
+    const month = String(todayDate.getMonth() + 1).padStart(2, '0')
+    const day = String(todayDate.getDate()).padStart(2, '0')
+    const todayDateLocal = `${year}-${month}-${day}`
+
+    // Also check UTC date as fallback
+    const todayDateUTC = new Date().toISOString().split('T')[0]
+
+    // Try local date first, fallback to UTC date
+    return (
+      statsData.byDate[todayDateLocal] ||
+      statsData.byDate[todayDateUTC] ||
+      { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
+    )
+  }, [statsData])
+
+  if (loadingGoal || loadingStats) {
     return (
       <Card className="frosted-card">
         <CardContent className="p-6">
