@@ -22,6 +22,8 @@ export interface MealInsert {
   expense_id?: string | null
   notes?: string | null
   llm_reasoning?: string | null
+  estimate?: boolean // If true, use LLM to estimate calories
+  portionSize?: string // For LLM estimation context
 }
 
 export interface CalorieStats {
