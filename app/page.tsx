@@ -244,16 +244,42 @@ export default function Home() {
       // Fetch last 30 days of meals
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const response = await fetch(`/api/meals?startDate=${startDate}&limit=100`);
+
+      // Check for authentication error
+      if (response.status === 401) {
+        toast.error('Please sign in to view calorie tracking');
+        setMeals([]);
+        setCalorieStats(null);
+        setLoadingMeals(false);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch meals: ${response.statusText}`);
+      }
+
       const data = await response.json();
       setMeals(data.meals || []);
 
       // Fetch stats
       const statsResponse = await fetch(`/api/calorie-stats?startDate=${startDate}`);
+
+      if (statsResponse.status === 401) {
+        toast.error('Please sign in to view calorie stats');
+        setCalorieStats(null);
+        setLoadingMeals(false);
+        return;
+      }
+
+      if (!statsResponse.ok) {
+        throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`);
+      }
+
       const statsData = await statsResponse.json();
       setCalorieStats(statsData);
     } catch (error) {
       console.error('Error fetching meals:', error);
-      toast.error('Failed to load meals');
+      toast.error('Failed to load meals. Please try again.');
     } finally {
       setLoadingMeals(false);
     }
@@ -908,6 +934,27 @@ export default function Home() {
               <InsightCardSkeleton />
               <InsightCardSkeleton />
             </div>
+          ) : meals.length === 0 && !calorieStats ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16 px-4"
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', bounce: 0.5, duration: 0.8 }}
+                className="text-6xl sm:text-7xl md:text-8xl mb-4"
+              >
+                🍔
+              </motion.div>
+              <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2">
+                No meals tracked yet
+              </h3>
+              <p className="text-muted-foreground text-sm sm:text-base mb-8 max-w-sm mx-auto">
+                Start logging your meals to track calories and nutrition
+              </p>
+            </motion.div>
           ) : (
             <div className="space-y-6">
               {/* Quick meal form */}
