@@ -2,27 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, type MealFilters } from './query-keys'
+import type { Meal } from '../supabase'
 import { toast } from 'sonner'
 
-// Meal type (based on your database schema)
-export interface Meal {
-  id: string
-  name: string
-  calories: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  meal_time: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
-  meal_date: string
-  source?: 'manual' | 'email'
-  confidence?: string
-  expense_id?: string
-  llm_reasoning?: string
-  notes?: string
-  created_at: string
-  updated_at: string
-}
+// Re-export Meal type for use in components
+export type { Meal }
 
+// Meal insert type for creating new meals
 export interface MealInsert {
   name: string
   calories?: number
@@ -31,8 +17,11 @@ export interface MealInsert {
   fat?: number
   meal_time: string
   meal_date: string
-  estimate?: boolean
-  notes?: string
+  source?: 'manual' | 'llm' | 'usda' | 'saved' | 'email'
+  confidence?: 'high' | 'medium' | 'low' | null
+  expense_id?: string | null
+  notes?: string | null
+  llm_reasoning?: string | null
 }
 
 export interface CalorieStats {
@@ -41,15 +30,15 @@ export interface CalorieStats {
   totalCarbs: number
   totalFat: number
   mealCount: number
-  averageCalories: number
-  dailyBreakdown: Array<{
-    date: string
-    calories: number
-    protein: number
-    carbs: number
-    fat: number
-    meals: number
-  }>
+  averageCaloriesPerDay: number
+  byMealTime: {
+    breakfast: { count: number; calories: number }
+    lunch: { count: number; calories: number }
+    dinner: { count: number; calories: number }
+    snack: { count: number; calories: number }
+    other: { count: number; calories: number }
+  }
+  byDate: Record<string, { calories: number; protein: number; carbs: number; fat: number; meals: number }>
 }
 
 /**
@@ -169,8 +158,11 @@ export function useCreateMealOptimistic() {
         fat: newMeal.fat || 0,
         meal_time: newMeal.meal_time as any,
         meal_date: newMeal.meal_date,
-        source: 'manual',
-        notes: newMeal.notes,
+        source: newMeal.source || 'manual',
+        confidence: null,
+        expense_id: null,
+        llm_reasoning: null,
+        notes: newMeal.notes || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }

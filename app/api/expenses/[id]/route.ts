@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 // GET single expense
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = createClient()
 
     // Get authenticated user
@@ -19,7 +20,7 @@ export async function GET(
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
@@ -37,9 +38,10 @@ export async function GET(
 // PUT update expense
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = createClient()
 
     // Get authenticated user
@@ -64,7 +66,7 @@ export async function PUT(
         category: body.category,
         notes: body.notes,
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .select()
 
@@ -86,9 +88,10 @@ export async function PUT(
 // DELETE expense
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = createClient()
 
     // Get authenticated user
@@ -101,7 +104,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('expenses')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (error) {
