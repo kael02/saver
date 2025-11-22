@@ -17,7 +17,7 @@ interface DailyStats {
 
 export function CalorieTracker() {
   // Use React Query hooks for automatic cache management
-  const { data: goal, isLoading: loadingGoal } = useCalorieGoal()
+  const { data: goal, isLoading: loadingGoal, error: goalError } = useCalorieGoal()
 
   // Get today's date range for stats
   const { todayStart, todayEnd } = useMemo(() => {
@@ -31,19 +31,25 @@ export function CalorieTracker() {
     }
   }, [])
 
-  const { data: statsData, isLoading: loadingStats } = useCalorieStats(
-    {
-      startDate: todayStart,
-      endDate: todayEnd,
-    },
-    {
-      enabled: !!goal, // Only fetch stats if we have a goal
-    }
-  )
+  const { data: statsData, isLoading: loadingStats, error: statsError } = useCalorieStats({
+    startDate: todayStart,
+    endDate: todayEnd,
+  })
+
+  // Debug logging
+  console.log('🔍 CalorieTracker Debug:', {
+    loadingGoal,
+    loadingStats,
+    goal,
+    goalError,
+    statsError,
+    statsData,
+  })
 
   // Extract today's stats from the response
   const today = useMemo<DailyStats>(() => {
     if (!statsData?.byDate) {
+      console.log('⚠️ No statsData.byDate, returning zeros')
       return { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
     }
 
@@ -57,6 +63,8 @@ export function CalorieTracker() {
     // Also check UTC date as fallback
     const todayDateUTC = new Date().toISOString().split('T')[0]
 
+    console.log('📅 Date debug:', { todayDateLocal, todayDateUTC, byDate: statsData.byDate })
+
     // Try local date first, fallback to UTC date
     return (
       statsData.byDate[todayDateLocal] ||
@@ -65,7 +73,9 @@ export function CalorieTracker() {
     )
   }, [statsData])
 
+  // Show loading state
   if (loadingGoal || loadingStats) {
+    console.log('⏳ CalorieTracker loading...')
     return (
       <Card className="frosted-card">
         <CardContent className="p-6">
@@ -78,7 +88,13 @@ export function CalorieTracker() {
     )
   }
 
-  if (!goal) return null
+  // If no goal is set, don't show the tracker (user hasn't set up calorie tracking yet)
+  if (!goal) {
+    console.log('❌ No calorie goal found, hiding tracker')
+    return null
+  }
+
+  console.log('✅ CalorieTracker rendering with goal:', goal, 'and today:', today)
 
   const progress = (today.calories / goal.daily_calories) * 100
   const remaining = goal.daily_calories - today.calories
