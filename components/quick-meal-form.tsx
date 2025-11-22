@@ -50,7 +50,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
         name: name.trim(),
         meal_time: mealTime,
         meal_date: localISOString,
-        estimate: !isManual, // Use LLM estimation if not manual
+        source: isManual ? 'manual' : 'llm', // Use LLM estimation if not manual
         calories: isManual ? parseInt(manualCalories) : undefined,
       })
 

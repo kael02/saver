@@ -158,14 +158,13 @@ export function useCreateMealOptimistic() {
         fat: newMeal.fat || 0,
         meal_time: newMeal.meal_time as any,
         meal_date: newMeal.meal_date,
-        source: 'manual',
+        source: newMeal.source || 'manual',
         confidence: null,
         expense_id: null,
         llm_reasoning: null,
         notes: newMeal.notes || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_id: null, // Will be set by server
       }
 
       // Optimistically update all meal lists
