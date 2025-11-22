@@ -5,9 +5,11 @@ import { createClient } from '@/lib/supabase/server'
 // PUT /api/meals/[id] - Update meal
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     // Get authenticated user from session
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -18,8 +20,6 @@ export async function PUT(
         { status: 401 }
       )
     }
-
-    const id = params.id
     const body = await request.json()
 
     // Only allow users to update their own meals
@@ -49,9 +49,11 @@ export async function PUT(
 // DELETE /api/meals/[id] - Delete meal
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     // Get authenticated user from session
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -62,8 +64,6 @@ export async function DELETE(
         { status: 401 }
       )
     }
-
-    const id = params.id
 
     // Only allow users to delete their own meals
     const { error } = await supabaseAdmin

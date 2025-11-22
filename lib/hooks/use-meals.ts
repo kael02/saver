@@ -2,15 +2,27 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, type MealFilters } from './query-keys'
-import type { Tables, TablesInsert } from '../supabase/database.types'
+import type { Meal } from '../supabase'
 import { toast } from 'sonner'
 
-// Type aliases from database
-type Meal = Tables<'meals'>
-type MealInsert = TablesInsert<'meals'>
+// Re-export Meal type for use in components
+export type { Meal }
 
-// Export for use in components
-export type { Meal, MealInsert }
+// Meal insert type for creating new meals
+export interface MealInsert {
+  name: string
+  calories?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  meal_time: string
+  meal_date: string
+  source?: 'manual' | 'llm' | 'usda' | 'saved' | 'email'
+  confidence?: 'high' | 'medium' | 'low' | null
+  expense_id?: string | null
+  notes?: string | null
+  llm_reasoning?: string | null
+}
 
 export interface CalorieStats {
   totalCalories: number
