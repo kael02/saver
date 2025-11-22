@@ -35,6 +35,19 @@ export function CalorieTracker() {
     try {
       // Fetch calorie goal
       const goalRes = await fetch('/api/calorie-goals')
+
+      // Check for authentication error
+      if (goalRes.status === 401) {
+        console.log('User not authenticated for calorie tracking')
+        setGoal(null)
+        setLoading(false)
+        return
+      }
+
+      if (!goalRes.ok) {
+        throw new Error(`Failed to fetch goal: ${goalRes.statusText}`)
+      }
+
       const goalData = await goalRes.json()
       setGoal(goalData)
 
@@ -47,6 +60,17 @@ export function CalorieTracker() {
       const statsRes = await fetch(
         `/api/calorie-stats?startDate=${todayStart.toISOString()}&endDate=${todayEnd.toISOString()}`
       )
+
+      if (statsRes.status === 401) {
+        console.log('User not authenticated for calorie stats')
+        setLoading(false)
+        return
+      }
+
+      if (!statsRes.ok) {
+        throw new Error(`Failed to fetch stats: ${statsRes.statusText}`)
+      }
+
       const statsData = await statsRes.json()
 
       // Get today's totals
