@@ -30,15 +30,15 @@ export interface CalorieStats {
   totalCarbs: number
   totalFat: number
   mealCount: number
-  averageCalories: number
-  dailyBreakdown: Array<{
-    date: string
-    calories: number
-    protein: number
-    carbs: number
-    fat: number
-    meals: number
-  }>
+  averageCaloriesPerDay: number
+  byMealTime: {
+    breakfast: { count: number; calories: number }
+    lunch: { count: number; calories: number }
+    dinner: { count: number; calories: number }
+    snack: { count: number; calories: number }
+    other: { count: number; calories: number }
+  }
+  byDate: Record<string, { calories: number; protein: number; carbs: number; fat: number; meals: number }>
 }
 
 /**
