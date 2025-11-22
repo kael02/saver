@@ -56,7 +56,8 @@ export type { PushSubscription } from './use-notifications'
 export {
   useMeals,
   useCalorieStats,
+  useCalorieGoal,
   useCreateMealOptimistic,
   useDeleteMealOptimistic,
 } from './use-meals'
-export type { Meal, MealInsert, CalorieStats } from './use-meals'
+export type { Meal, MealInsert, CalorieStats, CalorieGoal } from './use-meals'

@@ -62,6 +62,12 @@ export const queryKeys = {
     all: ['calorieStats'] as const,
     summary: (filters?: MealFilters) => [...queryKeys.calorieStats.all, 'summary', filters] as const,
   },
+
+  // Calorie Goals
+  calorieGoals: {
+    all: ['calorieGoals'] as const,
+    current: () => [...queryKeys.calorieGoals.all, 'current'] as const,
+  },
 } as const
 
 // Filter types

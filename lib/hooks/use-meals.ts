@@ -52,6 +52,16 @@ export interface CalorieStats {
   }>
 }
 
+export interface CalorieGoal {
+  id?: string
+  daily_calories: number
+  protein_target?: number
+  carbs_target?: number
+  fat_target?: number
+  created_at?: string
+  updated_at?: string
+}
+
 /**
  * Fetch meals with optional filters
  */
@@ -122,6 +132,39 @@ export function useCalorieStats(
   return useQuery({
     queryKey: queryKeys.calorieStats.summary(filters),
     queryFn: () => fetchCalorieStats(filters),
+    ...options,
+  })
+}
+
+/**
+ * Fetch current calorie goal
+ */
+async function fetchCalorieGoal(): Promise<CalorieGoal | null> {
+  const response = await fetch('/api/calorie-goals')
+
+  // Handle unauthenticated users gracefully
+  if (response.status === 401) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch calorie goal')
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to fetch current calorie goal
+ */
+export function useCalorieGoal(
+  options?: {
+    enabled?: boolean
+  }
+) {
+  return useQuery({
+    queryKey: queryKeys.calorieGoals.current(),
+    queryFn: fetchCalorieGoal,
     ...options,
   })
 }

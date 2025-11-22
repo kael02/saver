@@ -884,7 +884,7 @@ export default function Home() {
               <QuickMealForm />
 
               {/* Daily calorie tracker */}
-              <CalorieTracker refreshTrigger={meals.length} />
+              <CalorieTracker />
 
               {/* Meal list */}
               <div>
