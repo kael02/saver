@@ -961,7 +961,7 @@ export default function Home() {
               <QuickMealForm onMealAdded={fetchMeals} />
 
               {/* Daily calorie tracker */}
-              <CalorieTracker key={meals.length} />
+              <CalorieTracker refreshTrigger={meals.length} />
 
               {/* Meal list */}
               <div>
