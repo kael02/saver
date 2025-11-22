@@ -32,13 +32,25 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
     setIsEstimating(true)
 
     try {
+      // Create meal_date in local timezone to avoid timezone bugs
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const seconds = String(now.getSeconds()).padStart(2, '0')
+
+      // Format as ISO string but preserve local timezone
+      const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+
       const response = await fetch('/api/meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           meal_time: mealTime,
-          meal_date: new Date().toISOString(),
+          meal_date: localISOString,
           estimate: !isManual, // Use LLM estimation if not manual
           calories: isManual ? parseInt(manualCalories) : undefined,
         }),
