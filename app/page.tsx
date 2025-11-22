@@ -38,6 +38,8 @@ import {
   useUpdateExpense,
   useDeleteExpenseOptimistic,
   useEmailSync,
+  useMeals,
+  useCalorieStats,
 } from '@/lib/hooks';
 import type { Expense } from '@/lib/supabase';
 import { formatCurrency, hapticFeedback } from '@/lib/utils';
@@ -126,11 +128,16 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const lastScrollY = useRef(0);
 
-  // Calorie tracking state
-  const [meals, setMeals] = useState<any[]>([]);
-  const [calorieStats, setCalorieStats] = useState<any>(null);
-  const [loadingMeals, setLoadingMeals] = useState(false);
-  const [mealsNeedRefresh, setMealsNeedRefresh] = useState(false);
+  // Calorie tracking state - now using TanStack Query hooks
+  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: meals = [], isLoading: loadingMeals } = useMeals(
+    { startDate, limit: 100 },
+    { enabled: activeView === 'calories' }
+  );
+  const { data: calorieStats } = useCalorieStats(
+    { startDate },
+    { enabled: activeView === 'calories' && meals.length > 0 }
+  );
 
   const applyFilters = (
     expenseList: Expense[],
@@ -237,63 +244,8 @@ export default function Home() {
     };
   }, []);
 
-  // Fetch meals when calories view is active
-  const fetchMeals = async () => {
-    setLoadingMeals(true);
-    try {
-      // Fetch last 30 days of meals
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const response = await fetch(`/api/meals?startDate=${startDate}&limit=100`);
-
-      // Check for authentication error
-      if (response.status === 401) {
-        toast.error('Please sign in to view calorie tracking');
-        setMeals([]);
-        setCalorieStats(null);
-        setLoadingMeals(false);
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch meals: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setMeals(data.meals || []);
-
-      // Fetch stats
-      const statsResponse = await fetch(`/api/calorie-stats?startDate=${startDate}`);
-
-      if (statsResponse.status === 401) {
-        toast.error('Please sign in to view calorie stats');
-        setCalorieStats(null);
-        setLoadingMeals(false);
-        return;
-      }
-
-      if (!statsResponse.ok) {
-        throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`);
-      }
-
-      const statsData = await statsResponse.json();
-      setCalorieStats(statsData);
-    } catch (error) {
-      console.error('Error fetching meals:', error);
-      toast.error('Failed to load meals. Please try again.');
-    } finally {
-      setLoadingMeals(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeView === 'calories') {
-      // Always fetch on first view, or if marked for refresh
-      if (meals.length === 0 || mealsNeedRefresh) {
-        fetchMeals();
-        setMealsNeedRefresh(false);
-      }
-    }
-  }, [activeView, mealsNeedRefresh]);
+  // Note: Meal fetching now handled by useMeals and useCalorieStats hooks
+  // No need for manual fetchMeals function - TanStack Query handles it automatically
 
   const handleDelete = async (id: string) => {
     const expenseToDelete = expenses.find((e) => e.id === id);
@@ -464,14 +416,8 @@ export default function Home() {
         celebrateSuccess();
       }
 
-      // Mark meals for refresh (in case any GrabFood orders were synced)
-      setMealsNeedRefresh(true);
-
-      // If currently on calories tab, refresh immediately
-      if (activeView === 'calories') {
-        await fetchMeals();
-        setMealsNeedRefresh(false);
-      }
+      // Note: Meals will auto-refresh via TanStack Query invalidation
+      // (handled in useEmailSync hook)
 
       // Hide success message after 3 seconds
       setTimeout(() => {
@@ -935,7 +881,7 @@ export default function Home() {
           ) : (
             <div className="space-y-6">
               {/* Quick meal form */}
-              <QuickMealForm onMealAdded={fetchMeals} />
+              <QuickMealForm />
 
               {/* Daily calorie tracker */}
               <CalorieTracker refreshTrigger={meals.length} />
@@ -943,7 +889,7 @@ export default function Home() {
               {/* Meal list */}
               <div>
                 <h2 className="text-lg font-semibold mb-3">Recent Meals</h2>
-                <MealList meals={meals} onMealDeleted={fetchMeals} />
+                <MealList meals={meals} />
               </div>
 
               {/* Nutrition charts */}
