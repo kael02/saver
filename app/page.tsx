@@ -34,9 +34,9 @@ import {
   useExpenses,
   useStats,
   useBudgets,
-  useCreateExpense,
+  useCreateExpenseOptimistic,
   useUpdateExpense,
-  useDeleteExpense,
+  useDeleteExpenseOptimistic,
   useEmailSync,
 } from '@/lib/hooks';
 import type { Expense } from '@/lib/supabase';
@@ -85,10 +85,10 @@ export default function Home() {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const { data: budgets = [], isLoading: budgetsLoading } = useBudgets({ month: currentMonth });
 
-  // Mutations
-  const createExpenseMutation = useCreateExpense();
+  // Mutations (using optimistic updates for better UX)
+  const createExpenseMutation = useCreateExpenseOptimistic();
   const updateExpenseMutation = useUpdateExpense();
-  const deleteExpenseMutation = useDeleteExpense();
+  const deleteExpenseMutation = useDeleteExpenseOptimistic();
   const emailSyncMutation = useEmailSync();
 
   // Derived loading state
@@ -306,8 +306,8 @@ export default function Home() {
 
     hapticFeedback('medium');
 
-    // Show undo toast (suppress default mutation toast)
-    const toastId = toast.success('Expense deleted', {
+    // Show undo toast
+    toast.success('Expense deleted', {
       action: {
         label: 'Undo',
         onClick: () => handleUndoDelete(),
@@ -316,22 +316,13 @@ export default function Home() {
     });
 
     try {
-      // Use mutation without default toast
-      await deleteExpenseMutation.mutateAsync(id, {
-        onSuccess: () => {
-          // Suppress default toast - we're using our custom one
-        },
-        onError: () => {
-          // Suppress default toast
-        },
-      });
+      // Use optimistic delete mutation (UI updates immediately)
+      await deleteExpenseMutation.mutateAsync(id);
 
       // Clear undo after successful delete
       setTimeout(() => setDeletedExpense(null), 5000);
     } catch (error) {
-      // Rollback on error (mutation handles cache invalidation)
       console.error('Error deleting expense:', error);
-      toast.error('Failed to delete expense');
       setDeletedExpense(null);
     }
   };
@@ -342,7 +333,7 @@ export default function Home() {
     hapticFeedback('light');
 
     try {
-      // Re-create the expense using mutation
+      // Re-create the expense using optimistic mutation
       await createExpenseMutation.mutateAsync({
         amount: deletedExpense.expense.amount,
         merchant: deletedExpense.expense.merchant,
@@ -354,18 +345,13 @@ export default function Home() {
         transaction_type: deletedExpense.expense.transaction_type,
         currency: deletedExpense.expense.currency,
         source: deletedExpense.expense.source,
-      }, {
-        onSuccess: () => {
-          toast.success('Expense restored');
-          setDeletedExpense(null);
-        },
-        onError: () => {
-          // Error already handled by mutation
-          setDeletedExpense(null);
-        },
       });
+
+      toast.success('Expense restored');
+      setDeletedExpense(null);
     } catch (error) {
       console.error('Error restoring expense:', error);
+      setDeletedExpense(null);
     }
   };
 
@@ -406,6 +392,7 @@ export default function Home() {
   const handleSubmit = async (data: any) => {
     hapticFeedback('medium');
 
+    // Close form immediately for better UX (optimistic)
     setShowForm(false);
     const previousEditingExpense = editingExpense;
     setEditingExpense(undefined);
@@ -416,28 +403,18 @@ export default function Home() {
         await updateExpenseMutation.mutateAsync({
           id: previousEditingExpense.id,
           updates: data,
-        }, {
-          onSuccess: () => {
-            toast.success('Expense updated!');
-          },
-          onError: () => {
-            // Error already handled by mutation
-          },
         });
       } else {
-        // Create new expense
+        // Create new expense (optimistically shown immediately)
         await createExpenseMutation.mutateAsync({
           ...data,
           source: 'manual',
-        }, {
-          onSuccess: () => {
-            toast.success('Expense added!');
-            celebrateSuccess(); // Celebrate first expense
-          },
-          onError: () => {
-            // Error already handled by mutation
-          },
         });
+
+        // Celebrate only for first expense
+        if (expenses.length === 0) {
+          celebrateSuccess();
+        }
       }
     } catch (error) {
       console.error('Error saving expense:', error);
