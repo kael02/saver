@@ -2,38 +2,15 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, type MealFilters } from './query-keys'
+import type { Tables, TablesInsert } from '../supabase/database.types'
 import { toast } from 'sonner'
 
-// Meal type (based on your database schema)
-export interface Meal {
-  id: string
-  name: string
-  calories: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  meal_time: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
-  meal_date: string
-  source?: 'manual' | 'email'
-  confidence?: string
-  expense_id?: string
-  llm_reasoning?: string
-  notes?: string
-  created_at: string
-  updated_at: string
-}
+// Type aliases from database
+type Meal = Tables<'meals'>
+type MealInsert = TablesInsert<'meals'>
 
-export interface MealInsert {
-  name: string
-  calories?: number
-  protein?: number
-  carbs?: number
-  fat?: number
-  meal_time: string
-  meal_date: string
-  estimate?: boolean
-  notes?: string
-}
+// Export for use in components
+export type { Meal, MealInsert }
 
 export interface CalorieStats {
   totalCalories: number
@@ -170,9 +147,13 @@ export function useCreateMealOptimistic() {
         meal_time: newMeal.meal_time as any,
         meal_date: newMeal.meal_date,
         source: 'manual',
-        notes: newMeal.notes,
+        confidence: null,
+        expense_id: null,
+        llm_reasoning: null,
+        notes: newMeal.notes || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        user_id: null, // Will be set by server
       }
 
       // Optimistically update all meal lists

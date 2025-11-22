@@ -58,5 +58,7 @@ export {
   useCalorieStats,
   useCreateMealOptimistic,
   useDeleteMealOptimistic,
+  type Meal,
+  type MealInsert,
 } from './use-meals'
-export type { Meal, MealInsert, CalorieStats } from './use-meals'
+export type { CalorieStats } from './use-meals'
