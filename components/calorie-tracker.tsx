@@ -77,9 +77,31 @@ export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
 
       const statsData = await statsRes.json()
 
-      // Get today's totals
-      const todayDate = todayStart.toISOString().split('T')[0]
-      const todayStats = statsData.byDate?.[todayDate] || { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
+      // Get today's totals - use local date to match what's stored
+      // Format: YYYY-MM-DD in local timezone
+      const year = todayStart.getFullYear()
+      const month = String(todayStart.getMonth() + 1).padStart(2, '0')
+      const day = String(todayStart.getDate()).padStart(2, '0')
+      const todayDateLocal = `${year}-${month}-${day}`
+
+      // Also check UTC date in case of timezone differences
+      const todayDateUTC = todayStart.toISOString().split('T')[0]
+
+      console.log('📊 CalorieTracker Debug:', {
+        todayDateLocal,
+        todayDateUTC,
+        byDate: statsData.byDate,
+        allDates: Object.keys(statsData.byDate || {}),
+        todayStatsLocal: statsData.byDate?.[todayDateLocal],
+        todayStatsUTC: statsData.byDate?.[todayDateUTC],
+        totalCalories: statsData.totalCalories,
+        mealCount: statsData.mealCount,
+      })
+
+      // Try local date first, fallback to UTC date
+      const todayStats = statsData.byDate?.[todayDateLocal] ||
+                        statsData.byDate?.[todayDateUTC] ||
+                        { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
       setToday(todayStats)
     } catch (error) {
       console.error('Error fetching calorie data:', error)
