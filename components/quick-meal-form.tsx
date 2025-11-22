@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Sparkles, Utensils } from 'lucide-react'
 import { toast } from 'sonner'
+import { useCreateMealOptimistic } from '@/lib/hooks'
 
 interface QuickMealFormProps {
   onMealAdded?: () => void
@@ -15,11 +16,13 @@ interface QuickMealFormProps {
 export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
   const [name, setName] = useState('')
   const [mealTime, setMealTime] = useState<string>('other')
-  const [isEstimating, setIsEstimating] = useState(false)
   const [isManual, setIsManual] = useState(false)
 
   // Manual entry fields
   const [manualCalories, setManualCalories] = useState('')
+
+  // Use optimistic mutation
+  const createMealMutation = useCreateMealOptimistic()
 
   const handleQuickLog = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,55 +32,37 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
       return
     }
 
-    setIsEstimating(true)
+    // Create meal_date in local timezone to avoid timezone bugs
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const seconds = String(now.getSeconds()).padStart(2, '0')
+
+    // Format as ISO string but preserve local timezone
+    const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
 
     try {
-      // Create meal_date in local timezone to avoid timezone bugs
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = String(now.getMonth() + 1).padStart(2, '0')
-      const day = String(now.getDate()).padStart(2, '0')
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-
-      // Format as ISO string but preserve local timezone
-      const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
-
-      const response = await fetch('/api/meals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          meal_time: mealTime,
-          meal_date: localISOString,
-          estimate: !isManual, // Use LLM estimation if not manual
-          calories: isManual ? parseInt(manualCalories) : undefined,
-        }),
+      // Use optimistic mutation (meal appears instantly)
+      await createMealMutation.mutateAsync({
+        name: name.trim(),
+        meal_time: mealTime,
+        meal_date: localISOString,
+        estimate: !isManual, // Use LLM estimation if not manual
+        calories: isManual ? parseInt(manualCalories) : undefined,
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to log meal')
-      }
-
-      const meal = await response.json()
-
-      toast.success(
-        `Logged: ${meal.name}`,
-        {
-          description: `${meal.calories} cal • ${meal.protein}g protein`,
-        }
-      )
-
-      // Reset form
+      // Reset form on success
       setName('')
       setManualCalories('')
+
+      // Optional callback for backwards compatibility
       onMealAdded?.()
     } catch (error) {
       console.error('Error logging meal:', error)
-      toast.error('Failed to log meal')
-    } finally {
-      setIsEstimating(false)
+      // Error toast is handled by the mutation
     }
   }
 
@@ -98,7 +83,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="ios-body min-h-touch"
-              disabled={isEstimating}
+              disabled={createMealMutation.isPending}
             />
             {!isManual && (
               <p className="ios-caption text-muted-foreground mt-2 flex items-center gap-1">
@@ -109,7 +94,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
           </div>
 
           {/* Meal time */}
-          <Select value={mealTime} onValueChange={setMealTime} disabled={isEstimating}>
+          <Select value={mealTime} onValueChange={setMealTime} disabled={createMealMutation.isPending}>
             <SelectTrigger className="min-h-touch">
               <SelectValue placeholder="Meal time" />
             </SelectTrigger>
@@ -130,7 +115,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
                 placeholder="Calories (optional)"
                 value={manualCalories}
                 onChange={(e) => setManualCalories(e.target.value)}
-                disabled={isEstimating}
+                disabled={createMealMutation.isPending}
                 className="ios-body min-h-touch"
               />
             </div>
@@ -141,9 +126,9 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
             <Button
               type="submit"
               className="flex-1 ios-press min-h-touch"
-              disabled={isEstimating || !name.trim()}
+              disabled={createMealMutation.isPending || !name.trim()}
             >
-              {isEstimating ? (
+              {createMealMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Estimating...
@@ -160,7 +145,7 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
               type="button"
               variant="outline"
               onClick={() => setIsManual(!isManual)}
-              disabled={isEstimating}
+              disabled={createMealMutation.isPending}
               className="ios-press min-h-touch px-4"
             >
               {isManual ? 'AI Mode' : 'Manual'}

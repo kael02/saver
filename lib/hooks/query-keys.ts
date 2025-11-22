@@ -47,6 +47,21 @@ export const queryKeys = {
     categorySuggestion: (merchant: string) =>
       [...queryKeys.merchants.all, 'category-suggestion', merchant] as const,
   },
+
+  // Meals (for calorie tracking)
+  meals: {
+    all: ['meals'] as const,
+    lists: () => [...queryKeys.meals.all, 'list'] as const,
+    list: (filters?: MealFilters) => [...queryKeys.meals.lists(), filters] as const,
+    details: () => [...queryKeys.meals.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.meals.details(), id] as const,
+  },
+
+  // Calorie Stats
+  calorieStats: {
+    all: ['calorieStats'] as const,
+    summary: (filters?: MealFilters) => [...queryKeys.calorieStats.all, 'summary', filters] as const,
+  },
 } as const
 
 // Filter types
@@ -66,4 +81,12 @@ export interface BudgetFilters {
 
 export interface GoalFilters {
   active?: boolean
+}
+
+export interface MealFilters {
+  limit?: number
+  offset?: number
+  startDate?: string
+  endDate?: string
+  mealTime?: string
 }

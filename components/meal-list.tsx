@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,8 +14,8 @@ import {
   ShoppingBag
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
 import type { Meal } from '@/lib/supabase'
+import { useDeleteMealOptimistic } from '@/lib/hooks'
 
 interface MealListProps {
   meals: (Meal & { expenses?: any })[]
@@ -46,26 +45,21 @@ const CONFIDENCE_BADGES = {
 }
 
 export function MealList({ meals, onMealDeleted }: MealListProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Use optimistic delete mutation
+  const deleteMealMutation = useDeleteMealOptimistic()
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this meal?')) return
 
-    setDeletingId(id)
     try {
-      const response = await fetch(`/api/meals/${id}`, {
-        method: 'DELETE',
-      })
+      // Optimistic delete (meal disappears immediately)
+      await deleteMealMutation.mutateAsync(id)
 
-      if (!response.ok) throw new Error('Failed to delete')
-
-      toast.success('Meal deleted')
+      // Optional callback for backwards compatibility
       onMealDeleted?.()
     } catch (error) {
       console.error('Error deleting meal:', error)
-      toast.error('Failed to delete meal')
-    } finally {
-      setDeletingId(null)
+      // Error toast is handled by the mutation
     }
   }
 
@@ -192,10 +186,10 @@ export function MealList({ meals, onMealDeleted }: MealListProps) {
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => handleDelete(meal.id)}
-                      disabled={deletingId === meal.id}
+                      disabled={deleteMealMutation.isPending}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
+                      {deleteMealMutation.isPending ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
                 </div>

@@ -6,7 +6,7 @@
 
 // Query keys
 export { queryKeys } from './query-keys'
-export type { ExpenseFilters, BudgetFilters, GoalFilters } from './query-keys'
+export type { ExpenseFilters, BudgetFilters, GoalFilters, MealFilters } from './query-keys'
 
 // Expenses
 export {
@@ -51,3 +51,12 @@ export {
   useUnsubscribePushNotifications,
 } from './use-notifications'
 export type { PushSubscription } from './use-notifications'
+
+// Meals & Calorie Tracking
+export {
+  useMeals,
+  useCalorieStats,
+  useCreateMealOptimistic,
+  useDeleteMealOptimistic,
+} from './use-meals'
+export type { Meal, MealInsert, CalorieStats } from './use-meals'

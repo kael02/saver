@@ -139,6 +139,10 @@ export function useEmailSync() {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.stats.all })
 
+      // Also invalidate meals (in case GrabFood orders were synced)
+      queryClient.invalidateQueries({ queryKey: queryKeys.meals.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.calorieStats.all })
+
       // Don't show toast here - let the page handle it for better UX
       // The page.tsx already handles showing appropriate messages
     },
