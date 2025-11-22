@@ -12,6 +12,7 @@ export type { ExpenseFilters, BudgetFilters, GoalFilters } from './query-keys'
 export {
   useExpenses,
   useCreateExpense,
+  useCreateExpenseOptimistic,
   useUpdateExpense,
   useDeleteExpense,
   useDeleteExpenseOptimistic,

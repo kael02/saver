@@ -113,6 +113,77 @@ export function useCreateExpense() {
 }
 
 /**
+ * Hook with optimistic update for creating expenses
+ * Provides better UX by immediately updating the UI
+ *
+ * @example
+ * const { mutate: createExpense } = useCreateExpenseOptimistic()
+ *
+ * createExpense({
+ *   amount: 50000,
+ *   merchant: 'Starbucks',
+ *   currency: 'VND',
+ *   transaction_date: new Date().toISOString(),
+ *   source: 'manual'
+ * })
+ */
+export function useCreateExpenseOptimistic() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createExpense,
+    onMutate: async (newExpense) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.expenses.all })
+
+      // Snapshot previous value
+      const previousExpenses = queryClient.getQueryData(queryKeys.expenses.lists())
+
+      // Create optimistic expense with temporary ID
+      const optimisticExpense: Expense = {
+        id: `temp-${Date.now()}`,
+        amount: newExpense.amount,
+        merchant: newExpense.merchant,
+        currency: newExpense.currency || 'VND',
+        transaction_date: newExpense.transaction_date || new Date().toISOString(),
+        source: newExpense.source || 'manual',
+        category: newExpense.category,
+        notes: newExpense.notes,
+        card_number: newExpense.card_number,
+        cardholder: newExpense.cardholder,
+        transaction_type: newExpense.transaction_type,
+        email_subject: newExpense.email_subject,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Expense
+
+      // Optimistically update all expense lists
+      queryClient.setQueriesData({ queryKey: queryKeys.expenses.lists() }, (old: Expense[] | undefined) => {
+        if (!old) return [optimisticExpense]
+        return [optimisticExpense, ...old]
+      })
+
+      return { previousExpenses }
+    },
+    onError: (error, _, context) => {
+      // Rollback on error
+      if (context?.previousExpenses) {
+        queryClient.setQueryData(queryKeys.expenses.lists(), context.previousExpenses)
+      }
+      toast.error(error.message || 'Failed to create expense')
+    },
+    onSuccess: () => {
+      toast.success('Expense added!')
+    },
+    onSettled: () => {
+      // Always refetch after error or success to sync with server
+      queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats.all })
+    },
+  })
+}
+
+/**
  * Update expense mutation
  */
 async function updateExpense({
