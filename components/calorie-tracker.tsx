@@ -22,14 +22,18 @@ interface DailyStats {
   meals: number
 }
 
-export function CalorieTracker() {
+interface CalorieTrackerProps {
+  refreshTrigger?: number // When this changes, data will be refetched
+}
+
+export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
   const [goal, setGoal] = useState<CalorieGoal | null>(null)
   const [today, setToday] = useState<DailyStats>({ calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [refreshTrigger]) // Refetch when refreshTrigger changes
 
   const fetchData = async () => {
     try {
