@@ -3,6 +3,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SwipeableCard } from '@/components/ui/swipeable-card'
 import {
   Coffee,
   Sun,
@@ -13,13 +15,15 @@ import {
   Sparkles,
   ShoppingBag
 } from 'lucide-react'
-import { format } from 'date-fns'
 import type { Meal } from '@/lib/supabase'
 import { useDeleteMealOptimistic } from '@/lib/hooks'
+import { formatTimeGMT7 } from '@/lib/timezone'
+import { hapticFeedback } from '@/lib/utils'
 
 interface MealListProps {
   meals: (Meal & { expenses?: any })[]
   onMealDeleted?: () => void
+  showAll?: boolean
 }
 
 const MEAL_TIME_ICONS = {
@@ -44,14 +48,13 @@ const CONFIDENCE_BADGES = {
   low: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300', label: 'Low confidence' },
 }
 
-export function MealList({ meals, onMealDeleted }: MealListProps) {
+export function MealList({ meals, onMealDeleted, showAll = false }: MealListProps) {
   // Use optimistic delete mutation
   const deleteMealMutation = useDeleteMealOptimistic()
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this meal?')) return
-
     try {
+      hapticFeedback('heavy')
       // Optimistic delete (meal disappears immediately)
       await deleteMealMutation.mutateAsync(id)
 
@@ -65,137 +68,67 @@ export function MealList({ meals, onMealDeleted }: MealListProps) {
 
   if (meals.length === 0) {
     return (
-      <Card className="frosted-card">
-        <CardContent className="p-8 text-center text-muted-foreground">
-          <Apple className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No meals logged yet</p>
-          <p className="text-sm mt-1">Start tracking your meals above</p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<Apple className="w-16 h-16 opacity-50" />}
+        title="No meals logged yet"
+        description="Start tracking your meals above"
+        size="sm"
+        animationVariant="pulse"
+      />
     )
   }
 
+  // Display first 10 meals or all based on showAll prop
+  const displayedMeals = showAll ? meals : meals.slice(0, 10)
+
   return (
     <div className="space-y-3">
-      {meals.map((meal) => {
+      {displayedMeals.map((meal) => {
         const Icon = MEAL_TIME_ICONS[meal.meal_time] || Apple
         const colorClass = MEAL_TIME_COLORS[meal.meal_time] || MEAL_TIME_COLORS.other
 
         return (
-          <Card
+          <SwipeableCard
             key={meal.id}
-            className={`frosted-card border-l-4 ${
-              meal.source === 'email' ? 'border-l-purple-500' : 'border-l-blue-500'
-            }`}
+            onDelete={() => handleDelete(meal.id)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                {/* Icon */}
-                <div className={`p-2 rounded-lg ${colorClass}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-base leading-tight mb-1">
-                        {meal.name}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span>{format(new Date(meal.meal_date), 'h:mm a')}</span>
-                        <span>•</span>
-                        <span className="capitalize">{meal.meal_time}</span>
-                        {meal.expense_id && (
-                          <>
-                            <span>•</span>
-                            <ShoppingBag className="w-3 h-3" />
-                            <span className="text-xs">Linked to expense</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Calories */}
-                    <div className="text-right">
-                      <div className="font-bold text-lg text-primary">
-                        {meal.calories.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground">calories</div>
+            <Card
+              className={`frosted-card border-l-4 ${
+                meal.source === 'email' ? 'border-l-purple-500' : 'border-l-blue-500'
+              }`}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  {/* Left: Meal name and type */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-base leading-tight mb-0.5">
+                      {meal.name}
+                    </h4>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground capitalize">{meal.meal_time}</span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground">{formatTimeGMT7(meal.meal_date)}</span>
                     </div>
                   </div>
 
-                  {/* Macros */}
-                  <div className="flex items-center gap-3 mt-3 text-sm">
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">P:</span>
-                      <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {Math.round(meal.protein)}g
-                      </span>
+                  {/* Right: Calories */}
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-bold text-xl text-primary leading-tight">
+                      {meal.calories.toLocaleString()}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">C:</span>
-                      <span className="font-medium text-amber-600 dark:text-amber-400">
-                        {Math.round(meal.carbs)}g
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">F:</span>
-                      <span className="font-medium text-green-600 dark:text-green-400">
-                        {Math.round(meal.fat)}g
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    {meal.source === 'email' && (
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        Auto-tracked
-                      </Badge>
-                    )}
-                    {meal.source === 'llm' && (
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        AI Estimated
-                      </Badge>
-                    )}
-                    {meal.confidence && CONFIDENCE_BADGES[meal.confidence] && (
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs ${CONFIDENCE_BADGES[meal.confidence].color}`}
-                      >
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                        {CONFIDENCE_BADGES[meal.confidence].label}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Notes/Reasoning */}
-                  {(meal.notes || meal.llm_reasoning) && (
-                    <div className="mt-2 text-xs text-muted-foreground italic">
-                      {meal.notes || meal.llm_reasoning}
-                    </div>
-                  )}
-
-                  {/* Delete button */}
-                  <div className="mt-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => handleDelete(meal.id)}
-                      disabled={deleteMealMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      {deleteMealMutation.isPending ? 'Deleting...' : 'Delete'}
-                    </Button>
+                    <div className="text-xs text-muted-foreground">cal</div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                {/* Macros - removed delete button since swipe handles it */}
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">P: {Math.round(meal.protein)}g</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">C: {Math.round(meal.carbs)}g</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">F: {Math.round(meal.fat)}g</span>
+                </div>
+              </CardContent>
+            </Card>
+          </SwipeableCard>
         )
       })}
     </div>

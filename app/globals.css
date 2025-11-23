@@ -31,6 +31,10 @@
     --ios-tertiary: 240 5% 58%; /* Tertiary label */
     --ios-success: 145 73% 49%; /* iOS Green #34C759 */
     --ios-warning: 35 91% 62%; /* iOS Orange #FF9500 */
+
+    /* RGB values for transparency */
+    --card-rgb: 255, 255, 255;
+    --background-rgb: 242, 242, 247;
   }
 
   .dark {
@@ -60,6 +64,10 @@
     --ios-tertiary: 240 5% 58%; /* Tertiary label */
     --ios-success: 145 73% 49%; /* iOS Green */
     --ios-warning: 35 91% 62%; /* iOS Orange */
+
+    /* RGB values for transparency */
+    --card-rgb: 28, 28, 30;
+    --background-rgb: 0, 0, 0;
   }
 }
 
@@ -117,12 +125,24 @@
 @layer utilities {
   /* iOS-style cards */
   .ios-card {
-    @apply bg-card rounded-xl border-0;
-    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+    @apply bg-card rounded-2xl;
+    border: none !important;
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.04),
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 2px 8px -2px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark .ios-card {
-    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.06),
+      0 1px 3px rgba(0, 0, 0, 0.3),
+      0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  }
+
+  .ios-card:active {
+    transform: scale(0.995);
   }
 
   /* iOS grouped list */
@@ -153,14 +173,30 @@
 
   /* iOS touch feedback */
   .ios-touch {
-    @apply active:opacity-60 transition-opacity duration-150;
+    @apply active:opacity-60;
     -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* iOS button press */
   .ios-press {
-    @apply active:scale-[0.96] transition-transform duration-150;
+    @apply active:scale-[0.97];
     -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* iOS bounce animation */
+  @keyframes ios-bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .animate-ios-bounce {
+    animation: ios-bounce 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* iOS large title */

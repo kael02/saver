@@ -10,13 +10,11 @@ import { hapticFeedback } from '@/lib/utils'
 
 export function PushNotificationManager() {
   const [showPrompt, setShowPrompt] = useState(false)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
 
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission)
-      setNotificationsEnabled(Notification.permission === 'granted')
 
       // Check if we should show prompt
       const dismissed = localStorage.getItem('notification-prompt-dismissed')
@@ -43,7 +41,6 @@ export function PushNotificationManager() {
       setNotificationPermission(permission)
 
       if (permission === 'granted') {
-        setNotificationsEnabled(true)
         setShowPrompt(false)
         toast.success('Notifications enabled!')
 
@@ -62,6 +59,7 @@ export function PushNotificationManager() {
         }
       } else {
         toast.error('Notification permission denied')
+        setShowPrompt(false)
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error)
@@ -105,52 +103,9 @@ export function PushNotificationManager() {
     setShowPrompt(false)
   }
 
-  const toggleNotifications = async () => {
-    if (notificationsEnabled) {
-      // Disable notifications
-      try {
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready
-          const subscription = await registration.pushManager.getSubscription()
-
-          if (subscription) {
-            await subscription.unsubscribe()
-            await fetch('/api/notifications/unsubscribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ endpoint: subscription.endpoint }),
-            })
-          }
-        }
-
-        setNotificationsEnabled(false)
-        toast.info('Notifications disabled')
-      } catch (error) {
-        console.error('Error disabling notifications:', error)
-        toast.error('Failed to disable notifications')
-      }
-    } else {
-      await requestNotificationPermission()
-    }
-  }
-
+  // Only show the prompt for first-time users
   if (!showPrompt || notificationPermission !== 'default') {
-    return (
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.5 }}
-        onClick={toggleNotifications}
-        className="fixed bottom-28 left-6 z-40 p-3 rounded-full shadow-lg bg-card border hover:scale-110 transition-transform"
-        title={notificationsEnabled ? 'Disable notifications' : 'Enable notifications'}
-      >
-        {notificationsEnabled ? (
-          <Bell className="h-5 w-5 text-primary" />
-        ) : (
-          <BellOff className="h-5 w-5 text-muted-foreground" />
-        )}
-      </motion.button>
-    )
+    return null
   }
 
   return (

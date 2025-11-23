@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import type { Expense } from '@/lib/supabase';
 import {
   formatCurrency,
@@ -23,13 +24,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
   Calendar,
+  Check,
   ChevronRight,
   Clock,
   Edit,
+  FileText,
   Mail,
   Trash2,
+  X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { SwipeableCard } from '@/components/ui/swipeable-card';
 
 interface ExpandableExpenseCardProps {
   expense: Expense;
@@ -48,20 +53,36 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Other: '📦',
 };
 
-export function ExpandableExpenseCard({
-  expense,
-  onDelete,
-  onEdit,
-  onUpdate,
-}: ExpandableExpenseCardProps) {
+export const ExpandableExpenseCard = forwardRef<HTMLDivElement, ExpandableExpenseCardProps>(
+  function ExpandableExpenseCard({
+    expense,
+    onDelete,
+    onEdit,
+    onUpdate,
+  }, ref) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState(expense.notes || '');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const categoryColors = getCategoryColor(expense.category || 'Other');
+  // Memoize formatted date strings
+  const formattedDate = useMemo(() => {
+    return new Date(expense.transaction_date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [expense.transaction_date]);
+
+  const formattedTime = useMemo(() => {
+    return new Date(expense.transaction_date).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }, [expense.transaction_date]);
 
   // Use ResizeObserver for automatic height measurement
   useEffect(() => {
@@ -107,25 +128,39 @@ export function ExpandableExpenseCard({
     setIsExpanded(!isExpanded);
   };
 
-  const handleSaveNotes = () => {
-    if (onUpdate) {
-      onUpdate({ ...expense, notes: editedNotes });
+  const handleSaveNotes = async () => {
+    if (onUpdate && editedNotes !== expense.notes) {
+      await onUpdate({ ...expense, notes: editedNotes });
+      hapticFeedback('medium');
     }
-    setIsEditing(false);
-    hapticFeedback('medium');
+    setIsEditingNotes(false);
+  };
+
+  const handleCancelEditNotes = () => {
+    setEditedNotes(expense.notes || '');
+    setIsEditingNotes(false);
+    hapticFeedback('light');
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{
-        duration: 0.25,
-        ease: [0.175, 0.885, 0.32, 1.275],
+    <SwipeableCard
+      onDelete={() => {
+        hapticFeedback('heavy')
+        if (onDelete) onDelete(expense.id)
       }}
-      className="ios-card overflow-hidden"
+      disabled={isExpanded}
     >
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{
+          duration: 0.25,
+          ease: [0.175, 0.885, 0.32, 1.275],
+        }}
+        className="ios-card overflow-hidden"
+      >
       {/* Main content - iOS list item style */}
       <button
         type="button"
@@ -204,16 +239,7 @@ export function ExpandableExpenseCard({
                     <Calendar className="h-4 w-4" />
                     <span className="ios-body text-sm">Date</span>
                   </div>
-                  <span className="ios-body text-sm">
-                    {new Date(expense.transaction_date).toLocaleDateString(
-                      'en-US',
-                      {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }
-                    )}
-                  </span>
+                  <span className="ios-body text-sm">{formattedDate}</span>
                 </div>
 
                 <div className="flex items-center justify-between py-2">
@@ -221,16 +247,7 @@ export function ExpandableExpenseCard({
                     <Clock className="h-4 w-4" />
                     <span className="ios-body text-sm">Time</span>
                   </div>
-                  <span className="ios-body text-sm">
-                    {new Date(expense.transaction_date).toLocaleTimeString(
-                      'en-US',
-                      {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      }
-                    )}
-                  </span>
+                  <span className="ios-body text-sm">{formattedTime}</span>
                 </div>
 
                 {/* Source badge */}
@@ -254,6 +271,76 @@ export function ExpandableExpenseCard({
                     )}
                   </Badge>
                 </div>
+
+                {/* Notes section */}
+                {onUpdate && (
+                  <div className="border-t border-border/50 pt-2.5 mt-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        <span className="ios-body text-sm">Notes</span>
+                      </div>
+                      {!isEditingNotes && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditingNotes(true);
+                            hapticFeedback('light');
+                          }}
+                          className="h-7 text-xs px-2"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          {expense.notes ? 'Edit' : 'Add'}
+                        </Button>
+                      )}
+                    </div>
+
+                    {isEditingNotes ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editedNotes}
+                          onChange={(e) => setEditedNotes(e.target.value)}
+                          placeholder="Add notes about this expense..."
+                          className="ios-input min-h-[80px] text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveNotes();
+                            }}
+                            className="flex-1 h-9 text-xs"
+                          >
+                            <Check className="w-3 h-3 mr-1" />
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancelEditNotes();
+                            }}
+                            className="flex-1 h-9 text-xs"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="ios-body text-sm text-muted-foreground italic">
+                        {expense.notes || 'No notes added'}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
@@ -330,5 +417,8 @@ export function ExpandableExpenseCard({
         </AlertDialogContent>
       </AlertDialog>
     </motion.div>
+    </SwipeableCard>
   );
-}
+});
+
+ExpandableExpenseCard.displayName = 'ExpandableExpenseCard';

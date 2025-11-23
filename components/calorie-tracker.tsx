@@ -1,18 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { Flame, TrendingUp, TrendingDown, Target } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Flame, TrendingUp, TrendingDown, Target, Settings } from 'lucide-react'
 import { AnimatedCounter } from '@/components/animated-counter'
-
-interface CalorieGoal {
-  daily_calories: number
-  protein_target?: number
-  carbs_target?: number
-  fat_target?: number
-}
+import { useCalorieStats, useCalorieGoal, useUpdateCalorieGoal } from '@/lib/hooks/use-meals'
+import { getTodayRangeGMT7, getMillisecondsUntilMidnightGMT7 } from '@/lib/timezone'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/hooks/query-keys'
+import { hapticFeedback } from '@/lib/utils'
 
 interface DailyStats {
   calories: number
@@ -22,101 +31,122 @@ interface DailyStats {
   meals: number
 }
 
-interface CalorieTrackerProps {
-  refreshTrigger?: number // When this changes, data will be refetched
-}
+export function CalorieTracker() {
+  const queryClient = useQueryClient()
+  const [currentDay, setCurrentDay] = useState(() => getTodayRangeGMT7().todayDate)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dailyCalories, setDailyCalories] = useState('')
+  const [proteinTarget, setProteinTarget] = useState('')
+  const [carbsTarget, setCarbsTarget] = useState('')
+  const [fatTarget, setFatTarget] = useState('')
 
-export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
-  const [goal, setGoal] = useState<CalorieGoal | null>(null)
-  const [today, setToday] = useState<DailyStats>({ calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 })
-  const [loading, setLoading] = useState(true)
+  // Calculate today's date range in GMT+7
+  const { startDate, endDate, todayDate } = useMemo(() => {
+    return getTodayRangeGMT7()
+  }, [currentDay]) // Re-calculate when day changes
 
+  // Set up midnight reset timer in GMT+7
   useEffect(() => {
-    fetchData()
-  }, [refreshTrigger]) // Refetch when refreshTrigger changes
+    const msUntilMidnight = getMillisecondsUntilMidnightGMT7()
 
-  const fetchData = async () => {
+    console.log(`⏰ Scheduling calorie reset in ${Math.round(msUntilMidnight / 1000 / 60)} minutes (GMT+7 midnight)`)
+
+    const timer = setTimeout(() => {
+      console.log('🌅 Midnight in GMT+7! Resetting calories...')
+
+      // Update the current day to trigger re-calculation
+      setCurrentDay(getTodayRangeGMT7().todayDate)
+
+      // Invalidate all calorie-related queries to refresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.calorieStats.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meals.all })
+
+      // Set up next day's timer
+      const nextReset = getMillisecondsUntilMidnightGMT7()
+      console.log(`⏰ Next reset in ${Math.round(nextReset / 1000 / 60)} minutes`)
+    }, msUntilMidnight)
+
+    return () => clearTimeout(timer)
+  }, [currentDay, queryClient])
+
+  // Fetch data using TanStack Query hooks
+  const { data: goal, isLoading: goalLoading } = useCalorieGoal()
+  const { data: statsData, isLoading: statsLoading } = useCalorieStats({
+    startDate,
+    endDate,
+  })
+  const updateGoalMutation = useUpdateCalorieGoal()
+
+  const loading = goalLoading || statsLoading
+
+  // Initialize form values when goal data is loaded
+  useEffect(() => {
+    if (goal) {
+      setDailyCalories(goal.daily_calories.toString())
+      setProteinTarget(goal.protein_target?.toString() || '')
+      setCarbsTarget(goal.carbs_target?.toString() || '')
+      setFatTarget(goal.fat_target?.toString() || '')
+    }
+  }, [goal])
+
+  const handleSaveGoal = async () => {
     try {
-      // Fetch calorie goal
-      const goalRes = await fetch('/api/calorie-goals')
-
-      // Check for authentication error
-      if (goalRes.status === 401) {
-        console.log('User not authenticated for calorie tracking')
-        setGoal(null)
-        setLoading(false)
-        return
-      }
-
-      if (!goalRes.ok) {
-        throw new Error(`Failed to fetch goal: ${goalRes.statusText}`)
-      }
-
-      const goalData = await goalRes.json()
-      setGoal(goalData)
-
-      // Fetch today's stats
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayEnd = new Date()
-      todayEnd.setHours(23, 59, 59, 999)
-
-      const statsRes = await fetch(
-        `/api/calorie-stats?startDate=${todayStart.toISOString()}&endDate=${todayEnd.toISOString()}`
-      )
-
-      if (statsRes.status === 401) {
-        console.log('User not authenticated for calorie stats')
-        setLoading(false)
-        return
-      }
-
-      if (!statsRes.ok) {
-        throw new Error(`Failed to fetch stats: ${statsRes.statusText}`)
-      }
-
-      const statsData = await statsRes.json()
-
-      // Get today's totals - use local date to match what's stored
-      // Format: YYYY-MM-DD in local timezone
-      const year = todayStart.getFullYear()
-      const month = String(todayStart.getMonth() + 1).padStart(2, '0')
-      const day = String(todayStart.getDate()).padStart(2, '0')
-      const todayDateLocal = `${year}-${month}-${day}`
-
-      // Also check UTC date in case of timezone differences
-      const todayDateUTC = todayStart.toISOString().split('T')[0]
-
-      console.log('📊 CalorieTracker Debug:', {
-        todayDateLocal,
-        todayDateUTC,
-        byDate: statsData.byDate,
-        allDates: Object.keys(statsData.byDate || {}),
-        todayStatsLocal: statsData.byDate?.[todayDateLocal],
-        todayStatsUTC: statsData.byDate?.[todayDateUTC],
-        totalCalories: statsData.totalCalories,
-        mealCount: statsData.mealCount,
+      await updateGoalMutation.mutateAsync({
+        daily_calories: parseInt(dailyCalories),
+        protein_target: proteinTarget ? parseInt(proteinTarget) : null,
+        carbs_target: carbsTarget ? parseInt(carbsTarget) : null,
+        fat_target: fatTarget ? parseInt(fatTarget) : null,
       })
-
-      // Try local date first, fallback to UTC date
-      const todayStats = statsData.byDate?.[todayDateLocal] ||
-                        statsData.byDate?.[todayDateUTC] ||
-                        { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
-      setToday(todayStats)
+      setIsDialogOpen(false)
+      hapticFeedback('success')
     } catch (error) {
-      console.error('Error fetching calorie data:', error)
-    } finally {
-      setLoading(false)
+      console.error('Failed to update goal:', error)
+      hapticFeedback('error')
     }
   }
 
+  // Extract today's stats from the response
+  const today: DailyStats = useMemo(() => {
+    if (!statsData?.byDate) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
+    }
+
+    return (
+      statsData.byDate[todayDate] ||
+      { calories: 0, protein: 0, carbs: 0, fat: 0, meals: 0 }
+    )
+  }, [statsData, todayDate])
+
   if (loading) {
     return (
-      <Card className="frosted-card">
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-3">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-            <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <Card className="frosted-card border-l-4 border-l-orange-500">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t">
+            <div className="text-center space-y-2">
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="text-center space-y-2">
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="text-center space-y-2">
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -132,43 +162,108 @@ export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
   return (
     <Card className="frosted-card border-l-4 border-l-orange-500">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Flame className="w-5 h-5 text-orange-500" />
-          Today's Calories
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Flame className="w-5 h-5 text-orange-500" />
+            <span className="font-semibold text-base">Today's Calories</span>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Adjust Daily Goals</DialogTitle>
+                <DialogDescription>
+                  Set your daily calorie and macro targets
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="calories">Daily Calories</Label>
+                  <Input
+                    id="calories"
+                    type="number"
+                    value={dailyCalories}
+                    onChange={(e) => setDailyCalories(e.target.value)}
+                    placeholder="2000"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="protein">Protein Target (g)</Label>
+                  <Input
+                    id="protein"
+                    type="number"
+                    value={proteinTarget}
+                    onChange={(e) => setProteinTarget(e.target.value)}
+                    placeholder="150"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="carbs">Carbs Target (g)</Label>
+                  <Input
+                    id="carbs"
+                    type="number"
+                    value={carbsTarget}
+                    onChange={(e) => setCarbsTarget(e.target.value)}
+                    placeholder="200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="fat">Fat Target (g)</Label>
+                  <Input
+                    id="fat"
+                    type="number"
+                    value={fatTarget}
+                    onChange={(e) => setFatTarget(e.target.value)}
+                    placeholder="65"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveGoal}
+                  disabled={updateGoalMutation.isPending}
+                >
+                  {updateGoalMutation.isPending ? 'Saving...' : 'Save Goals'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Main calorie counter */}
-        <div className="text-center space-y-2">
-          <div className="flex items-end justify-center gap-2">
-            <AnimatedCounter
-              value={today.calories}
-              className="text-4xl font-bold"
-            />
-            <span className="text-muted-foreground text-lg mb-1">
-              / {goal.daily_calories.toLocaleString()}
-            </span>
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline gap-2">
+              <AnimatedCounter
+                value={today.calories}
+                className="text-5xl font-bold"
+              />
+              <span className="text-muted-foreground text-base">
+                / {goal.daily_calories.toLocaleString()}
+              </span>
+            </div>
+            <div className="text-right">
+              <div className={`text-lg font-bold ${isOverBudget ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                {isOverBudget ? '+' : ''}{Math.abs(remaining).toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {isOverBudget ? 'over' : 'left'}
+              </div>
+            </div>
           </div>
 
           <Progress value={Math.min(progress, 100)} className="h-3" />
-
-          <div className="flex items-center justify-center gap-2">
-            {isOverBudget ? (
-              <>
-                <TrendingUp className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-red-600 dark:text-red-400 font-medium">
-                  {Math.abs(remaining).toLocaleString()} cal over budget
-                </span>
-              </>
-            ) : (
-              <>
-                <TrendingDown className="w-4 h-4 text-green-500" />
-                <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                  {remaining.toLocaleString()} cal remaining
-                </span>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Macros */}
@@ -176,47 +271,32 @@ export function CalorieTracker({ refreshTrigger }: CalorieTrackerProps) {
           {/* Protein */}
           <div className="text-center">
             <div className="text-xs text-muted-foreground mb-1">Protein</div>
-            <div className="font-semibold text-blue-600 dark:text-blue-400">
-              {Math.round(today.protein)}g
+            <div className="font-bold text-sm text-blue-600 dark:text-blue-400">
+              {Math.round(today.protein)}
+              {goal.protein_target && <span className="text-muted-foreground font-normal">/{goal.protein_target}</span>}
+              <span className="text-xs ml-0.5">g</span>
             </div>
-            {goal.protein_target && (
-              <div className="text-xs text-muted-foreground">
-                / {goal.protein_target}g
-              </div>
-            )}
           </div>
 
           {/* Carbs */}
           <div className="text-center">
             <div className="text-xs text-muted-foreground mb-1">Carbs</div>
-            <div className="font-semibold text-amber-600 dark:text-amber-400">
-              {Math.round(today.carbs)}g
+            <div className="font-bold text-sm text-amber-600 dark:text-amber-400">
+              {Math.round(today.carbs)}
+              {goal.carbs_target && <span className="text-muted-foreground font-normal">/{goal.carbs_target}</span>}
+              <span className="text-xs ml-0.5">g</span>
             </div>
-            {goal.carbs_target && (
-              <div className="text-xs text-muted-foreground">
-                / {goal.carbs_target}g
-              </div>
-            )}
           </div>
 
           {/* Fat */}
           <div className="text-center">
             <div className="text-xs text-muted-foreground mb-1">Fat</div>
-            <div className="font-semibold text-green-600 dark:text-green-400">
-              {Math.round(today.fat)}g
+            <div className="font-bold text-sm text-green-600 dark:text-green-400">
+              {Math.round(today.fat)}
+              {goal.fat_target && <span className="text-muted-foreground font-normal">/{goal.fat_target}</span>}
+              <span className="text-xs ml-0.5">g</span>
             </div>
-            {goal.fat_target && (
-              <div className="text-xs text-muted-foreground">
-                / {goal.fat_target}g
-              </div>
-            )}
           </div>
-        </div>
-
-        {/* Meal count */}
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Target className="w-4 h-4" />
-          <span>{today.meals} meals logged today</span>
         </div>
       </CardContent>
     </Card>

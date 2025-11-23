@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, hapticFeedback } from '@/lib/utils'
 import { Plus, Edit2, Trash2, Save, X, Target, Calendar as CalendarIcon } from 'lucide-react'
 import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '@/lib/hooks'
 import type { Tables } from '@/lib/supabase/database.types'
+import { getNowInGMT7 } from '@/lib/timezone'
 
 type SavingsGoal = Tables<'savings_goals'>
 
@@ -260,21 +262,12 @@ export function SavingsGoals() {
 
       {/* Goals List */}
       {goals.length === 0 ? (
-        <div className="ios-card p-12 text-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', duration: 0.5 }}
-          >
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Target className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="ios-headline mb-2">No Goals Yet</h3>
-            <p className="ios-caption text-muted-foreground">
-              Create your first savings goal to start tracking your progress
-            </p>
-          </motion.div>
-        </div>
+        <EmptyState
+          icon={<Target className="h-16 w-16 text-primary" />}
+          title="No Goals Yet"
+          description="Create your first savings goal to start tracking your progress"
+          animationVariant="pulse"
+        />
       ) : (
         <div className="space-y-3">
           {goals.map((goal, index) => {
@@ -282,7 +275,7 @@ export function SavingsGoals() {
             const remaining = goal.target_amount - (goal.current_amount || 0)
             const isCompleted = progress >= 100
             const daysUntilDeadline = goal.deadline
-              ? Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+              ? Math.ceil((new Date(goal.deadline).getTime() - getNowInGMT7().getTime()) / (1000 * 60 * 60 * 24))
               : null
 
             return (

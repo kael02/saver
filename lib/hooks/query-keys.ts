@@ -23,6 +23,17 @@ export const queryKeys = {
     summary: (period?: string) => [...queryKeys.stats.all, 'summary', period] as const,
   },
 
+  // Advanced Analytics
+  analytics: {
+    all: ['analytics'] as const,
+    budgetRecommendations: (expenseCount: number, budgetCount: number) =>
+      [...queryKeys.analytics.all, 'budget-recommendations', expenseCount, budgetCount] as const,
+    spendingPatterns: (expenseCount: number, budgetCount: number) =>
+      [...queryKeys.analytics.all, 'spending-patterns', expenseCount, budgetCount] as const,
+    budgetAdjustmentCheck: (expenseCount: number, budgetCount: number) =>
+      [...queryKeys.analytics.all, 'budget-adjustment-check', expenseCount, budgetCount] as const,
+  },
+
   // Budgets
   budgets: {
     all: ['budgets'] as const,
@@ -61,6 +72,12 @@ export const queryKeys = {
   calorieStats: {
     all: ['calorieStats'] as const,
     summary: (filters?: MealFilters) => [...queryKeys.calorieStats.all, 'summary', filters] as const,
+  },
+
+  // Calorie Goal
+  calorieGoal: {
+    all: ['calorieGoal'] as const,
+    detail: () => [...queryKeys.calorieGoal.all, 'detail'] as const,
   },
 } as const
 

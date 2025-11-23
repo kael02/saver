@@ -3,6 +3,7 @@ import { getEmailServices } from '@/lib/email-service'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
 import { calorieEstimator } from '@/lib/calorie-estimator'
+import { getCurrentISOInGMT7 } from '@/lib/timezone'
 
 export async function POST() {
   try {
@@ -106,7 +107,7 @@ export async function POST() {
               additionalInfo: `GrabFood order from ${expense.merchant}`,
             })
 
-            // Determine meal time based on transaction time
+            // Determine meal time based on transaction time in GMT+7
             const transactionDate = new Date(expense.transactionDate)
             const hour = transactionDate.getHours()
             let mealTime: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other' = 'other'
@@ -121,8 +122,9 @@ export async function POST() {
               mealTime = 'snack'
             }
 
-            // Create meal entry linked to expense
+            // Create meal entry linked to expense (IMPORTANT: Include user_id!)
             const { error: mealError } = await supabaseAdmin.from('meals').insert({
+              user_id: user.id, // Fix: Add user_id to associate meal with user
               name: mealDescription,
               calories: estimate.calories,
               protein: estimate.protein,

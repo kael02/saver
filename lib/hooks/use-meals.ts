@@ -43,6 +43,13 @@ export interface CalorieStats {
   byDate: Record<string, { calories: number; protein: number; carbs: number; fat: number; meals: number }>
 }
 
+export interface CalorieGoal {
+  daily_calories: number
+  protein_target?: number
+  carbs_target?: number
+  fat_target?: number
+}
+
 /**
  * Fetch meals with optional filters
  */
@@ -108,11 +115,18 @@ export function useCalorieStats(
   options?: {
     enabled?: boolean
     refetchInterval?: number
+    refetchOnWindowFocus?: boolean
+    refetchOnMount?: boolean
+    staleTime?: number
   }
 ) {
   return useQuery({
     queryKey: queryKeys.calorieStats.summary(filters),
     queryFn: () => fetchCalorieStats(filters),
+    // Default to fresh data for calorie stats
+    staleTime: 0, // Always refetch to ensure up-to-date stats
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     ...options,
   })
 }
@@ -189,10 +203,33 @@ export function useCreateMealOptimistic() {
         description: `${data.calories} cal • ${data.protein}g protein`,
       })
     },
-    onSettled: () => {
+    onSettled: async () => {
       // Always refetch after error or success to sync with server (gets actual AI estimates)
-      queryClient.invalidateQueries({ queryKey: queryKeys.meals.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.calorieStats.all })
+      console.log('🔄 Invalidating queries after meal creation...')
+
+      // Invalidate and refetch all related queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.meals.all,
+        refetchType: 'all'
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calorieStats.all,
+        refetchType: 'all'
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calorieGoal.all,
+        refetchType: 'all'
+      })
+
+      console.log('✅ Queries invalidated successfully')
+
+      // Also force refetch calorie stats to ensure immediate update
+      await queryClient.refetchQueries({
+        queryKey: queryKeys.calorieStats.all,
+        type: 'all'
+      })
+
+      console.log('✅ Calorie stats refetched')
     },
   })
 }
@@ -244,10 +281,96 @@ export function useDeleteMealOptimistic() {
     onSuccess: () => {
       toast.success('Meal deleted')
     },
-    onSettled: () => {
+    onSettled: async () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: queryKeys.meals.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.calorieStats.all })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.meals.all,
+        refetchType: 'all'
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calorieStats.all,
+        refetchType: 'all'
+      })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calorieGoal.all,
+        refetchType: 'all'
+      })
+
+      // Force refetch calorie stats
+      await queryClient.refetchQueries({
+        queryKey: queryKeys.calorieStats.all,
+        type: 'all'
+      })
+    },
+  })
+}
+
+/**
+ * Fetch calorie goal
+ */
+async function fetchCalorieGoal(): Promise<CalorieGoal | null> {
+  const response = await fetch('/api/calorie-goals')
+
+  // Handle auth errors gracefully
+  if (response.status === 401) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch calorie goal')
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to fetch calorie goal
+ */
+export function useCalorieGoal() {
+  return useQuery({
+    queryKey: queryKeys.calorieGoal.detail(),
+    queryFn: fetchCalorieGoal,
+  })
+}
+
+/**
+ * Update calorie goal mutation
+ */
+async function updateCalorieGoal(goal: Partial<CalorieGoal>): Promise<CalorieGoal> {
+  const response = await fetch('/api/calorie-goals', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(goal),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to update calorie goal')
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to update calorie goal
+ */
+export function useUpdateCalorieGoal() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateCalorieGoal,
+    onSuccess: () => {
+      toast.success('Goals updated successfully!')
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update goals')
+    },
+    onSettled: async () => {
+      // Invalidate calorie goal queries
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calorieGoal.all,
+        refetchType: 'all'
+      })
     },
   })
 }

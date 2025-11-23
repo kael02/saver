@@ -1,3 +1,5 @@
+import { llmService } from './llm-service'
+
 export interface ParsedExpense {
   cardNumber: string
   cardholder: string
@@ -69,9 +71,7 @@ export class EmailParser {
    * Parse email using OpenRouter AI (more reliable than regex)
    */
   private async parseWithAI(subject: string, body: string): Promise<ParsedExpense | null> {
-    const apiKey = process.env.OPENROUTER_API_KEY
-
-    if (!apiKey) {
+    if (!llmService.isConfigured()) {
       console.log('OpenRouter API key not configured, falling back to regex parsing')
       return null
     }
@@ -87,7 +87,6 @@ export class EmailParser {
       const truncatedBody = sanitizedBody.substring(0, 1000)
 
       console.log(`Sanitized email: ${truncatedBody.length} chars (original: ${cleanBody.length} chars)`)
-
 
       const prompt = `You are an email parser that extracts transaction information from emails.
 Parse the following email and extract the transaction details in JSON format.
@@ -130,54 +129,30 @@ Return ONLY valid JSON in this exact format (no markdown, no explanations):
 If this email is NOT a completed transaction (e.g., pending order, confirmation email, promotional email), return:
 {"skip": true}`
 
-      const response = await fetch(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer':
-              process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-            'X-Title': 'Expense Tracker Email Parser',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash', // Fast and free model
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.1, // Low temperature for consistent parsing
-            max_tokens: 500,
-          }),
-        }
-      );
+      const response = await llmService.completion({
+        messages: [{ role: 'user', content: prompt }],
+        model: 'google/gemini-2.0-flash-001',
+        temperature: 0.1,
+        maxTokens: 500,
+      })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('OpenRouter API error:', response.status, errorText)
-        return null
-      }
-
-      const data = await response.json()
-      const content = data.choices?.[0]?.message?.content?.trim()
-
-      if (!content) {
-        console.error('No content in OpenRouter response')
+      if (!response) {
+        console.error('No response from LLM service')
         return null
       }
 
       // Parse JSON response
-      let parsed
-      try {
-        // Remove markdown code blocks if present
-        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, content]
-        const jsonStr = jsonMatch[1] || content
-        parsed = JSON.parse(jsonStr.trim())
-      } catch (e) {
-        console.error('Failed to parse AI response as JSON:', content)
+      const parsed = llmService.parseJSON<{
+        skip?: boolean
+        amount?: number
+        merchant?: string
+        currency?: string
+        transactionDate?: string
+        transactionType?: string
+        orderCode?: string
+      }>(response.content)
+
+      if (!parsed) {
         return null
       }
 
@@ -199,9 +174,9 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
         cardNumber: parsed.orderCode || 'Email',
         cardholder: 'Email User',
         transactionType: parsed.transactionType || 'Purchase',
-        amount: parseFloat(parsed.amount),
+        amount: parseFloat(String(parsed.amount)),
         currency: parsed.currency || 'VND',
-        transactionDate: parsed.transactionDate,
+        transactionDate: parsed.transactionDate || new Date().toISOString(),
         merchant: parsed.merchant,
         source: 'email',
         emailSubject: subject,
