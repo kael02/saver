@@ -61,9 +61,6 @@ export function ProgressIndicator({ status, message, progress, detail }: Progres
       }}
       className="ios-card overflow-hidden"
     >
-      {/* Top accent bar */}
-      <div className={`h-1 ${config.accentColor}`} />
-
       <div className="p-4">
         <div className="flex items-start gap-3.5">
           {/* Icon container with iOS-style background */}

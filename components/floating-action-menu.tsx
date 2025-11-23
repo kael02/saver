@@ -2,21 +2,18 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Plus, X, Edit, RefreshCw, Download } from 'lucide-react'
+import { Plus, X, Pencil, RefreshCw } from 'lucide-react'
 import { hapticFeedback } from '@/lib/utils'
 
 interface FloatingActionMenuProps {
   onAddExpense: () => void
   onSyncEmails: () => void
-  onExport: () => void
   syncing?: boolean
 }
 
 export function FloatingActionMenu({
   onAddExpense,
   onSyncEmails,
-  onExport,
   syncing = false,
 }: FloatingActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -34,101 +31,107 @@ export function FloatingActionMenu({
 
   const actions = [
     {
-      icon: Edit,
+      icon: Pencil,
       label: 'Add Expense',
       onClick: () => handleAction(onAddExpense),
-      color: 'bg-blue-500',
+      gradient: 'from-blue-500 to-blue-600',
+      iconColor: 'text-blue-500',
     },
     {
       icon: RefreshCw,
       label: 'Sync Emails',
       onClick: () => handleAction(onSyncEmails),
-      color: 'bg-green-500',
+      gradient: 'from-green-500 to-green-600',
+      iconColor: 'text-green-500',
       disabled: syncing,
-    },
-    {
-      icon: Download,
-      label: 'Export CSV',
-      onClick: () => handleAction(onExport),
-      color: 'bg-orange-500',
     },
   ]
 
   return (
     <>
-      {/* iOS-style Backdrop */}
+      {/* Backdrop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             onClick={toggleMenu}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
             style={{ WebkitBackdropFilter: 'blur(8px)' }}
           />
         )}
       </AnimatePresence>
 
-      {/* Action buttons - Positioned above bottom nav */}
-      <div className="fixed right-5 z-50" style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
+      {/* Action Menu */}
+      <div
+        className="fixed right-4 z-50"
+        style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}
+      >
+        {/* Action Buttons */}
         <AnimatePresence mode="popLayout">
           {isOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute bottom-20 right-0 flex flex-col gap-3 items-end pb-2"
+              transition={{ duration: 0.15 }}
+              className="absolute bottom-16 right-0 flex flex-col gap-2.5 items-end mb-3"
             >
               {actions.map((action, index) => {
                 const Icon = action.icon
                 return (
                   <motion.div
                     key={action.label}
-                    initial={{ opacity: 0, scale: 0.3, x: 20, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.3, x: 20, y: 20 }}
+                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
                     transition={{
-                      delay: index * 0.05,
+                      delay: index * 0.04,
                       type: 'spring',
-                      damping: 25,
-                      stiffness: 500,
+                      damping: 20,
+                      stiffness: 400,
                     }}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-2.5"
                   >
-                    {/* iOS-style label */}
+                    {/* Label Pill */}
                     <motion.span
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      transition={{ delay: index * 0.05 + 0.1 }}
-                      className="bg-background/95 backdrop-blur-xl border border-border/50 px-3.5 py-2 rounded-full shadow-lg text-sm font-medium whitespace-nowrap"
-                      style={{ WebkitBackdropFilter: 'blur(20px)' }}
+                      transition={{ delay: index * 0.04 + 0.05 }}
+                      className="
+                        ios-card
+                        px-3.5 py-2
+                        text-sm font-medium
+                        whitespace-nowrap
+                        shadow-lg
+                      "
                     >
                       {action.label}
                     </motion.span>
 
-                    {/* iOS-style action button */}
+                    {/* Action Button */}
                     <motion.button
                       onClick={action.onClick}
                       disabled={action.disabled}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className={`
-                        w-14 h-14 rounded-full shadow-xl
-                        ${action.color}
+                        w-12 h-12 rounded-full
+                        bg-background
+                        border-2 border-border
                         disabled:opacity-60
                         flex items-center justify-center
+                        shadow-lg
                         transition-all duration-200
-                        border border-white/20
                       `}
-                      style={{
-                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) inset'
-                      }}
                     >
-                      <Icon className={`h-6 w-6 text-white ${action.disabled && syncing ? 'animate-spin' : ''}`} />
+                      <Icon
+                        className={`h-5 w-5 ${action.iconColor} ${action.disabled && syncing ? 'animate-spin' : ''}`}
+                        strokeWidth={2.5}
+                      />
                     </motion.button>
                   </motion.div>
                 )
@@ -137,47 +140,62 @@ export function FloatingActionMenu({
           )}
         </AnimatePresence>
 
-        {/* Main FAB - iOS Style */}
+        {/* Main FAB Button - Redesigned */}
         <motion.button
           onClick={toggleMenu}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="
-            w-16 h-16 rounded-full
-            bg-primary
-            shadow-2xl
+            w-14 h-14 rounded-full
+            bg-gradient-to-br from-primary via-primary to-purple-600
+            shadow-xl
             flex items-center justify-center
-            transition-all duration-300
+            relative
             border border-white/20
-            relative overflow-hidden
           "
           style={{
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1) inset'
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
-          {/* Glossy overlay for iOS effect */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+          {/* Glossy overlay */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 via-white/5 to-transparent pointer-events-none" />
 
-          {/* Icon with smooth rotation */}
+          {/* Icon */}
           <AnimatePresence mode="wait">
             <motion.div
               key={isOpen ? 'close' : 'open'}
-              initial={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
+              initial={{ rotate: -90, opacity: 0, scale: 0.8 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              exit={{ rotate: 90, opacity: 0, scale: 0.8 }}
               transition={{
-                duration: 0.25,
+                duration: 0.2,
                 ease: [0.4, 0, 0.2, 1]
               }}
               className="relative z-10"
             >
               {isOpen ? (
-                <X className="h-7 w-7 text-white" strokeWidth={2.5} />
+                <X className="h-6 w-6 text-white" strokeWidth={3} />
               ) : (
-                <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
+                <Plus className="h-6 w-6 text-white" strokeWidth={3} />
               )}
             </motion.div>
           </AnimatePresence>
+
+          {/* Pulse effect when syncing */}
+          {syncing && !isOpen && (
+            <motion.div
+              className="absolute inset-0 rounded-full bg-green-500/30"
+              animate={{
+                scale: [1, 1.3, 1],
+                opacity: [0.5, 0, 0.5],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+          )}
         </motion.button>
       </div>
     </>

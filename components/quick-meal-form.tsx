@@ -8,12 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Sparkles, Utensils } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCreateMealOptimistic } from '@/lib/hooks'
+import { getCurrentISOInGMT7 } from '@/lib/timezone'
 
-interface QuickMealFormProps {
-  onMealAdded?: () => void
-}
-
-export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
+export function QuickMealForm() {
   const [name, setName] = useState('')
   const [mealTime, setMealTime] = useState<string>('other')
   const [isManual, setIsManual] = useState(false)
@@ -32,17 +29,8 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
       return
     }
 
-    // Create meal_date in local timezone to avoid timezone bugs
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hours = String(now.getHours()).padStart(2, '0')
-    const minutes = String(now.getMinutes()).padStart(2, '0')
-    const seconds = String(now.getSeconds()).padStart(2, '0')
-
-    // Format as ISO string but preserve local timezone
-    const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+    // Create meal_date in GMT+7 timezone
+    const localISOString = getCurrentISOInGMT7()
 
     try {
       // Use optimistic mutation (meal appears instantly)
@@ -58,9 +46,6 @@ export function QuickMealForm({ onMealAdded }: QuickMealFormProps) {
       // Reset form on success
       setName('')
       setManualCalories('')
-
-      // Optional callback for backwards compatibility
-      onMealAdded?.()
     } catch (error) {
       console.error('Error logging meal:', error)
       // Error toast is handled by the mutation
