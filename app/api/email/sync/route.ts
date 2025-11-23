@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server'
+import { calorieEstimator } from '@/lib/calorie-estimator'
 import { getEmailServices } from '@/lib/email-service'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/server'
-import { calorieEstimator } from '@/lib/calorie-estimator'
-import { getCurrentISOInGMT7 } from '@/lib/timezone'
+import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
@@ -68,8 +67,6 @@ export async function POST() {
       const { data, error } = await supabaseAdmin.from('expenses').insert([
         {
           user_id: user.id,
-          card_number: expense.cardNumber,
-          cardholder: expense.cardholder,
           transaction_type: expense.transactionType,
           amount: expense.amount,
           currency: expense.currency,
@@ -77,6 +74,7 @@ export async function POST() {
           merchant: expense.merchant,
           source: expense.source,
           email_subject: expense.emailSubject,
+          category: expense.category,
         },
       ]).select()
 

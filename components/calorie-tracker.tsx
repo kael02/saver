@@ -1,27 +1,27 @@
 'use client'
 
-import { useMemo, useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+import { AnimatedCounter } from '@/components/animated-counter'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog'
-import { Flame, TrendingUp, TrendingDown, Target, Settings } from 'lucide-react'
-import { AnimatedCounter } from '@/components/animated-counter'
-import { useCalorieStats, useCalorieGoal, useUpdateCalorieGoal } from '@/lib/hooks/use-meals'
-import { getTodayRangeGMT7, getMillisecondsUntilMidnightGMT7 } from '@/lib/timezone'
-import { useQueryClient } from '@tanstack/react-query'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { queryKeys } from '@/lib/hooks/query-keys'
+import { useCalorieGoal, useCalorieStats, useUpdateCalorieGoal } from '@/lib/hooks/use-meals'
+import { getMillisecondsUntilMidnightGMT7, getTodayRangeGMT7 } from '@/lib/timezone'
 import { hapticFeedback } from '@/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
+import { Flame, Settings } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface DailyStats {
   calories: number
@@ -93,15 +93,15 @@ export function CalorieTracker() {
     try {
       await updateGoalMutation.mutateAsync({
         daily_calories: parseInt(dailyCalories),
-        protein_target: proteinTarget ? parseInt(proteinTarget) : null,
-        carbs_target: carbsTarget ? parseInt(carbsTarget) : null,
-        fat_target: fatTarget ? parseInt(fatTarget) : null,
+        protein_target: proteinTarget ? parseInt(proteinTarget) : undefined,
+        carbs_target: carbsTarget ? parseInt(carbsTarget) : undefined,
+        fat_target: fatTarget ? parseInt(fatTarget) : undefined,
       })
       setIsDialogOpen(false)
-      hapticFeedback('success')
+      hapticFeedback('medium')
     } catch (error) {
       console.error('Failed to update goal:', error)
-      hapticFeedback('error')
+      hapticFeedback('medium')
     }
   }
 

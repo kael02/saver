@@ -1,19 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -21,9 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Calendar, Plus, Coffee, Sun, Moon, Apple, Trash2, Check } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { hapticFeedback } from '@/lib/utils'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Apple, Calendar, Check, Coffee, Moon, Plus, Sun, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 interface PlannedMeal {
@@ -75,7 +75,7 @@ export function MealPlanner() {
     setEstimatedCalories('')
     setMealDate(new Date().toISOString().split('T')[0])
     setIsDialogOpen(false)
-    hapticFeedback('success')
+    hapticFeedback('light')
     toast.success('Meal added to plan')
   }
 
@@ -88,7 +88,7 @@ export function MealPlanner() {
   const handleMarkAsEaten = (meal: PlannedMeal) => {
     // This would integrate with the existing meal tracking system
     handleDeleteMeal(meal.id)
-    hapticFeedback('success')
+    hapticFeedback('light')
     toast.success('Meal logged! Add details if needed.')
   }
 

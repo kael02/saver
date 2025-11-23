@@ -1,14 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { AlertTriangle, TrendingUp, AlertCircle, X } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { formatCurrency } from '@/lib/utils'
-import type { Expense } from '@/lib/supabase'
-import { useBudgets } from '@/lib/hooks'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { useBudgets } from '@/lib/hooks'
+import type { Expense } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, AlertTriangle, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Food: '🍔',
@@ -48,8 +47,8 @@ export function BudgetAlerts({ expenses }: BudgetAlertsProps) {
         .toISOString()
         .slice(0, 7)
       if (expenseMonth === currentMonth) {
-        categorySpending[expense.category] =
-          (categorySpending[expense.category] || 0) + expense.amount
+        categorySpending[expense.category || 'Other'] =
+          (categorySpending[expense.category || 'Other'] || 0) + expense.amount
       }
     })
 

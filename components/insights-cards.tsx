@@ -1,11 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { TrendingUp, TrendingDown, Calendar, DollarSign, ShoppingBag, Award } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { formatCurrency } from '@/lib/utils'
 import type { Expense } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { Award, Calendar, DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
+import { useMemo } from 'react'
 
 interface InsightsCardsProps {
   expenses: Expense[]
@@ -73,7 +73,7 @@ export function InsightsCards({ expenses }: InsightsCardsProps) {
     // Most expensive category this month
     const categoryTotals: Record<string, number> = {}
     currentMonthExpenses.forEach((e) => {
-      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount
+      categoryTotals[e.category || 'Other'] = (categoryTotals[e.category || 'Other'] || 0) + e.amount
     })
     const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]
 
