@@ -1,11 +1,11 @@
-import type { Metadata, Viewport } from 'next'
-import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/components/auth-provider'
-import { QueryProvider } from '@/components/query-provider'
-import { Toaster } from 'sonner'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
+import { QueryProvider } from '@/components/query-provider'
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
+import { ThemeProvider } from '@/components/theme-provider'
+import type { Metadata, Viewport } from 'next'
+import { Toaster } from 'sonner'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Expense Tracker',
@@ -55,7 +55,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="ExpensePal" />
+        <meta name="apple-mobile-web-app-status-bar-style" 
+        content="black-translucent" />
       </head>
       <body className="font-sans">
         <ThemeProvider
