@@ -222,7 +222,7 @@ const ChartTooltipContent = React.forwardRef<
                   {item.value && (
                     <span className="font-mono font-medium tabular-nums text-foreground">
                       {formatter
-                        ? formatter(item.value, item.name, item, index, item.payload)
+                        ? formatter(item.value, item.name || '', item, index, item.payload)
                         : item.value.toLocaleString()}
                     </span>
                   )}
@@ -301,10 +301,9 @@ const ChartLegendContent = React.forwardRef<
 ChartLegendContent.displayName = "ChartLegend"
 
 export {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
+  ChartContainer, ChartLegend,
   ChartLegendContent,
-  ChartStyle,
+  ChartStyle, ChartTooltip,
+  ChartTooltipContent
 }
+

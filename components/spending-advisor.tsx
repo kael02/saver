@@ -1,23 +1,21 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Lightbulb,
-  TrendingUp,
-  AlertTriangle,
-  Target,
-  Calendar,
-  DollarSign,
-  ChevronRight,
-  Sparkles
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { formatCurrency } from '@/lib/utils'
-import type { Expense } from '@/lib/supabase'
+import { Card, CardContent } from '@/components/ui/card'
 import { useBudgets } from '@/lib/hooks'
+import type { Expense } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  AlertTriangle,
+  ChevronRight,
+  Lightbulb,
+  Sparkles,
+  Target,
+  TrendingUp
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 interface Recommendation {
   id: string
@@ -63,17 +61,17 @@ export function SpendingAdvisor({ expenses }: SpendingAdvisorProps) {
     const categoryTotals: Record<string, { current: number; last: number }> = {}
 
     currentMonthExpenses.forEach((e) => {
-      if (!categoryTotals[e.category]) {
-        categoryTotals[e.category] = { current: 0, last: 0 }
+      if (!categoryTotals[e.category || 'Other']) {
+        categoryTotals[e.category || 'Other'] = { current: 0, last: 0 }
       }
-      categoryTotals[e.category].current += e.amount
+      categoryTotals[e.category || 'Other'].current += e.amount
     })
 
     lastMonthExpenses.forEach((e) => {
-      if (!categoryTotals[e.category]) {
-        categoryTotals[e.category] = { current: 0, last: 0 }
+      if (!categoryTotals[e.category || 'Other']) {
+        categoryTotals[e.category || 'Other'] = { current: 0, last: 0 }
       }
-      categoryTotals[e.category].last += e.amount
+      categoryTotals[e.category || 'Other'].last += e.amount
     })
 
     // 1. Detect unusual spending spikes
