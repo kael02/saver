@@ -1,18 +1,57 @@
 import { llmService } from './llm-service'
 
 export interface ParsedExpense {
-  cardNumber: string
-  cardholder: string
   transactionType: string
   amount: number
   currency: string
   transactionDate: string
   merchant: string
+  category: string
   source: 'email'
   emailSubject: string
 }
 
 export class EmailParser {
+  /**
+   * Map transaction type to category
+   */
+  private mapToCategory(transactionType: string, merchant: string): string {
+    const type = transactionType.toLowerCase()
+    const merch = merchant.toLowerCase()
+
+    // Food-related
+    if (type.includes('food') || type.includes('restaurant') || merch.includes('cafe') || merch.includes('coffee')) {
+      return 'Food'
+    }
+
+    // Transport-related
+    if (type.includes('car') || type.includes('bike') || type.includes('taxi') || type.includes('ride') || type.includes('grab')) {
+      return 'Transport'
+    }
+
+    // Shopping-related
+    if (type.includes('shopping') || type.includes('mart') || type.includes('retail') || type.includes('store')) {
+      return 'Shopping'
+    }
+
+    // Entertainment-related
+    if (type.includes('entertainment') || type.includes('movie') || type.includes('game') || type.includes('subscription')) {
+      return 'Entertainment'
+    }
+
+    // Bills-related
+    if (type.includes('bill') || type.includes('utility') || type.includes('internet') || type.includes('phone')) {
+      return 'Bills'
+    }
+
+    // Health-related
+    if (type.includes('health') || type.includes('medical') || type.includes('hospital') || type.includes('pharmacy') || type.includes('clinic')) {
+      return 'Health'
+    }
+
+    return 'Other'
+  }
+
   /**
    * Strip HTML tags from text
    */
@@ -101,8 +140,8 @@ Extract the following information:
 - currency (e.g., "VND", "USD")
 - merchant (store/restaurant/service name)
 - transactionDate (ISO 8601 format like "2025-11-19T10:30:00+07:00")
-- transactionType (e.g., "GrabFood", "GrabCar", "Shopping", "Food", etc.)
-- orderCode (if available, otherwise empty string)
+- transactionType (e.g., "GrabFood", "GrabCar", "Online Shopping", etc.)
+- category (MUST be one of: "Food", "Transport", "Shopping", "Entertainment", "Bills", "Health", "Other")
 
 IMPORTANT RULES:
 1. For the amount, extract ONLY the final total amount paid by the customer, not subtotals or individual items
@@ -110,11 +149,19 @@ IMPORTANT RULES:
 3. If you cannot find a specific field, use reasonable defaults:
    - merchant: "Unknown" if not found
    - transactionType: "Purchase" if not specific
-   - orderCode: "" if not found
+   - category: Choose the MOST appropriate from the list above
 4. Remove all formatting from amount (no commas, dots, or currency symbols)
 5. For Grab emails, look for "Đặt từ" or "From" to find the merchant name
 6. Skip pending orders or order confirmations - only parse completed transactions
 7. Ignore placeholder values like [EMAIL], [PHONE], [CARD], [LINK]
+8. Category mapping examples:
+   - GrabFood, restaurants, cafes → "Food"
+   - GrabCar, GrabBike, Uber, taxis → "Transport"
+   - Online shopping, retail stores → "Shopping"
+   - Movies, games, subscriptions → "Entertainment"
+   - Utilities, phone bills, internet → "Bills"
+   - Hospitals, pharmacies, clinics → "Health"
+   - Anything else → "Other"
 
 Return ONLY valid JSON in this exact format (no markdown, no explanations):
 {
@@ -123,7 +170,7 @@ Return ONLY valid JSON in this exact format (no markdown, no explanations):
   "merchant": "Store Name",
   "transactionDate": "2025-11-19T18:38:00+07:00",
   "transactionType": "GrabFood",
-  "orderCode": "A-8KC6JRDWWP26AV"
+  "category": "Food"
 }
 
 If this email is NOT a completed transaction (e.g., pending order, confirmation email, promotional email), return:
@@ -149,7 +196,7 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
         currency?: string
         transactionDate?: string
         transactionType?: string
-        orderCode?: string
+        category?: string
       }>(response.content)
 
       if (!parsed) {
@@ -168,16 +215,19 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
         return null
       }
 
+      // Validate category is one of the allowed values
+      const validCategories = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Other']
+      const category = validCategories.includes(parsed.category || '') ? parsed.category! : 'Other'
+
       console.log('✓ AI parsed expense:', parsed)
 
       return {
-        cardNumber: parsed.orderCode || 'Email',
-        cardholder: 'Email User',
         transactionType: parsed.transactionType || 'Purchase',
         amount: parseFloat(String(parsed.amount)),
         currency: parsed.currency || 'VND',
         transactionDate: parsed.transactionDate || new Date().toISOString(),
         merchant: parsed.merchant,
+        category,
         source: 'email',
         emailSubject: subject,
       }
@@ -198,17 +248,9 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
 
       console.log('Cleaned body preview:', cleanBody.substring(0, 800))
 
-      // Extract card number (Vietnamese: Số thẻ OR English: Card number)
-      const cardNumberMatch = cleanBody.match(/(?:Số thẻ|Card number):\s*[<>]*\s*(\d+\*+\d+)/i)
-      const cardNumber = cardNumberMatch ? cardNumberMatch[1].trim() : ''
-
-      // Extract cardholder name (Vietnamese: Chủ thẻ OR English: Cardholder)
-      const cardholderMatch = cleanBody.match(/(?:Chủ thẻ|Cardholder):\s*[<>]*\s*([A-Z\s]+?)(?:\s*Giao dịch|\s*Transaction|<)/i)
-      const cardholder = cardholderMatch ? cardholderMatch[1].trim() : ''
-
       // Extract transaction type (Vietnamese: Giao dịch OR English: Transaction)
       const transactionMatch = cleanBody.match(/(?:Giao dịch|Transaction):\s*[<>]*\s*([^<]+?)(?:\s*Giá trị|\s*Value|<)/i)
-      const transactionType = transactionMatch ? transactionMatch[1].trim() : ''
+      const transactionType = transactionMatch ? transactionMatch[1].trim() : 'Purchase'
 
       // Extract amount and currency (Vietnamese: Giá trị OR English: Value)
       const valueMatch = cleanBody.match(/(?:Giá trị|Value):\s*[<>]*\s*([\d,\.]+)\s*([A-Z]{3})/i)
@@ -241,16 +283,18 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
         merchant = merchantMatch[1].trim() || 'Unknown'
       }
 
-      console.log('Parsed values:', { cardNumber, cardholder, transactionType, amount, currency, merchant })
+      // Map to category
+      const category = this.mapToCategory(transactionType, merchant)
+
+      console.log('Parsed values:', { transactionType, amount, currency, merchant, category })
 
       return {
-        cardNumber,
-        cardholder,
         transactionType,
         amount,
         currency,
         transactionDate: transactionDate.toISOString(),
         merchant,
+        category,
         source: 'email',
         emailSubject: subject,
       }
@@ -372,10 +416,6 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
 
       console.log('Extracted merchant:', merchant)
 
-      // Extract order code if available
-      const orderCodeMatch = cleanBody.match(/(?:Mã đơn hàng|Order code|Order)\s*[:\-]?\s*([A-Z0-9\-]+)/i)
-      const orderCode = orderCodeMatch ? orderCodeMatch[1].trim() : ''
-
       // Determine transaction type based on content
       let transactionType = 'Grab'
       if (cleanBody.toLowerCase().includes('grabfood') || cleanBody.toLowerCase().includes('food')) {
@@ -386,16 +426,18 @@ If this email is NOT a completed transaction (e.g., pending order, confirmation 
         transactionType = 'GrabCar/Bike'
       }
 
-      console.log('Parsed Grab values:', { amount, currency, merchant, transactionType, orderCode, date: transactionDate.toISOString() })
+      // Map to category
+      const category = this.mapToCategory(transactionType, merchant)
+
+      console.log('Parsed Grab values:', { amount, currency, merchant, transactionType, category, date: transactionDate.toISOString() })
 
       return {
-        cardNumber: orderCode || 'Grab',
-        cardholder: 'Grab User',
         transactionType,
         amount,
         currency,
         transactionDate: transactionDate.toISOString(),
         merchant,
+        category,
         source: 'email',
         emailSubject: subject,
       }

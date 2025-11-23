@@ -57,7 +57,7 @@ OPENROUTER_API_KEY=your_api_key_here
 
 ### Example: Email Parser Integration
 
-The email parser has been refactored to use the LLM service:
+The email parser has been refactored to use the LLM service and now includes **automatic category detection**:
 
 ```typescript
 // Before (old code - removed)
@@ -85,6 +85,32 @@ const parsed = llmService.parseJSON(response.content)
 - ✅ Centralized error handling
 - ✅ Consistent API across app
 - ✅ Easy to add new LLM features
+- ✅ **NEW:** Automatic category detection for email imports
+
+### Auto-Category Detection
+
+The email parser now automatically assigns categories to imported expenses:
+
+**LLM-Powered:**
+- AI analyzes merchant name and transaction type
+- Returns one of: Food, Transport, Shopping, Entertainment, Bills, Health, Other
+- Example: "GrabFood from Starbucks" → Category: "Food"
+
+**Fallback Mapping:**
+For regex-based parsers (VIB, Grab), a smart mapping function categorizes based on:
+- Transaction type keywords (food, car, bike, shopping, etc.)
+- Merchant name patterns (cafe, restaurant, taxi, etc.)
+
+**No More Manual Categorization:**
+```typescript
+// Parsed expense now includes category
+{
+  merchant: "Starbucks",
+  amount: 50000,
+  category: "Food",  // ← Automatically detected!
+  source: "email"
+}
+```
 
 ---
 
